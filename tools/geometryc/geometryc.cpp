@@ -741,54 +741,22 @@ int main(int _argc, const char* _argv[])
 	std::sort(groups.begin(), groups.end(), GroupSortByMaterial() );
 
 	bool hasColor = false;
-	bool hasNormal;
-	bool hasTexcoord;
+	bool hasNormal = false;
+	bool hasTexcoord = false;
 	{
-		TriangleArray::const_iterator it = triangles.begin();
-		hasNormal   = -1 != it->m_index[0].m_normal;
-		hasTexcoord = -1 != it->m_index[0].m_texcoord;
-
-		if (!hasTexcoord)
+		for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd && !hasTexcoord; ++jt)
 		{
-			for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd && !hasTexcoord; ++jt)
+			for (uint32_t i = 0; i < 3; ++i)
 			{
-				for (uint32_t i = 0; i < 3; ++i)
-				{
-					hasTexcoord |= -1 != jt->m_index[i].m_texcoord;
-				}
-			}
-
-			if (hasTexcoord)
-			{
-				for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd; ++jt)
-				{
-					for (uint32_t i = 0; i < 3; ++i)
-					{
-						jt->m_index[i].m_texcoord = -1 == jt->m_index[i].m_texcoord ? 0 : jt->m_index[i].m_texcoord;
-					}
-				}
+				hasTexcoord |= -1 != jt->m_index[i].m_texcoord;
 			}
 		}
 
-		if (!hasNormal)
+		for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd && !hasNormal; ++jt)
 		{
-			for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd && !hasNormal; ++jt)
+			for (uint32_t i = 0; i < 3; ++i)
 			{
-				for (uint32_t i = 0; i < 3; ++i)
-				{
-					hasNormal |= -1 != jt->m_index[i].m_normal;
-				}
-			}
-
-			if (hasNormal)
-			{
-				for (TriangleArray::iterator jt = triangles.begin(), jtEnd = triangles.end(); jt != jtEnd; ++jt)
-				{
-					for (uint32_t i = 0; i < 3; ++i)
-					{
-						jt->m_index[i].m_normal = -1 == jt->m_index[i].m_normal ? 0 : jt->m_index[i].m_normal;
-					}
-				}
+				hasNormal |= -1 != jt->m_index[i].m_normal;
 			}
 		}
 	}
@@ -981,7 +949,7 @@ int main(int _argc, const char* _argv[])
 				if (hasTexcoord)
 				{
 					float uv[2];
-					bx::memCopy(uv, &texcoords[index.m_texcoord], 2*sizeof(float) );
+					bx::memCopy(uv, &texcoords[index.m_texcoord == -1 ? 0 : index.m_texcoord], 2*sizeof(float) );
 					
 					if (flipV)
 					{
@@ -994,7 +962,7 @@ int main(int _argc, const char* _argv[])
 				if (hasNormal)
 				{
 					float normal[4];
-					bx::store(normal, bx::normalize(bx::load<bx::Vec3>(&normals[index.m_normal]) ) );
+					bx::store(normal, bx::normalize(bx::load<bx::Vec3>(&normals[index.m_normal == -1 ? 0 : index.m_normal]) ) );
 					normal[3] = 0.0f;
 					bgfx::vertexPack(normal, true, bgfx::Attrib::Normal, decl, vertices);
 				}
