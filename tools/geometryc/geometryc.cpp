@@ -64,7 +64,7 @@ struct Index3
 	int32_t m_position;
 	int32_t m_texcoord;
 	int32_t m_normal;
-	int32_t m_vbc; // Barycentric ID. Holds eigher 0, 1 or 2.
+	int32_t m_vbc; // Barycentric ID. Holds either 0, 1 or 2.
 };
 
 struct TriIndices
@@ -619,6 +619,10 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 
 void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale)
 {
+	Group group;
+	group.m_startTriangle = 0;
+	group.m_numTriangles = 0;
+	
 	cgltf_options options = { };
 	cgltf_data* data = NULL;
 	cgltf_result result = cgltf_parse(&options, _data, _size, &data);
@@ -643,21 +647,59 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 						for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
 						{
 							cgltf_primitive* primitive = &mesh->primitives[primitiveIndex];
+
+							cgltf_size numVertex = primitive->attributes[0].data->count;
 							
 							for (cgltf_size attributeIndex = 0; attributeIndex < primitive->attributes_count; ++attributeIndex)
 							{
 								cgltf_attribute* attribute = &primitive->attributes[attributeIndex];
 								cgltf_accessor* accessor = attribute->data;
 								
+								BX_CHECK(numVertex == accessor->count, "Invalid attribute count");
+								
 								if (attribute->type == cgltf_attribute_type_position && attribute->index == 0)
 								{
-									float pos[3];
-									bool success = cgltf_accessor_read_float(accessor, 0, pos, 3);
-									success = cgltf_accessor_read_float(accessor, 1, pos, 3);
-									success = cgltf_accessor_read_float(accessor, 2, pos, 3);
-									int a = 1;
+									bx::Vec3 pos;
+									for(cgltf_size v=0;v<accessor->count;++v)
+									{
+										cgltf_accessor_read_float(accessor, v, &pos.x, 3);
+										_mesh->m_positions.push_back(pos);
+									}
 								}
 							}
+							
+							if ( primitive->indices != NULL )
+							{
+								
+								
+							}
+							else
+							{
+								for(cgltf_size v=0;v<numVertex; v+=3)
+								{
+									TriIndices triangle;
+									for(int i=0;i<3;++i)
+									{
+										Index3 index;
+										index.m_position = int32_t(v * 3 + i);
+										index.m_normal = -1;
+										index.m_texcoord = -1;
+										index.m_vbc = 0;
+										triangle.m_index[i] = index;
+									}
+									_mesh->m_triangles.push_back(triangle);
+								}
+							}
+							
+							group.m_numTriangles = (uint32_t)(_mesh->m_triangles.size() ) - group.m_startTriangle;
+							if (0 < group.m_numTriangles)
+							{
+								_mesh->m_groups.push_back(group);
+								group.m_startTriangle = (uint32_t)(_mesh->m_triangles.size() );
+								group.m_numTriangles = 0;
+							}
+							
+							_mesh->m_groups.push_back(group);
 						}
 					}
 				}
