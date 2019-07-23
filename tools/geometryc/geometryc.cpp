@@ -617,7 +617,7 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 			   , num );
 }
 
-void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale)
+void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale, const bx::StringView& _path)
 {
 	Group group;
 	group.m_startTriangle = 0;
@@ -629,7 +629,11 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 	
 	if (result == cgltf_result_success)
 	{
-		result = cgltf_load_buffers(&options, data, "");
+		char* path = (char*)malloc(_path.getLength()+1);
+		bx::memCopy(path, _path.getPtr(), _path.getLength());
+		path[_path.getLength()] = 0;
+		result = cgltf_load_buffers(&options, data, path);
+		free(path);
 		
 		if (result == cgltf_result_success)
 		{
@@ -640,6 +644,8 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 				for (cgltf_size nodeIndex = 0; nodeIndex < scene->nodes_count; ++nodeIndex)
 				{
 					cgltf_node* node = &data->nodes[nodeIndex];
+					
+					//todo: nodes can have children - recurse
 					
 					cgltf_mesh* mesh = node->mesh;
 					if (NULL != mesh)
@@ -670,8 +676,22 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 							
 							if ( primitive->indices != NULL )
 							{
+								cgltf_accessor* accessor = primitive->indices;
 								
-								
+								for(cgltf_size v=0;v<accessor->count; v+=3)
+								{
+									TriIndices triangle;
+									for(int i=0;i<3;++i)
+									{
+										Index3 index;
+										index.m_position = int32_t(cgltf_accessor_read_index(accessor, i));
+										index.m_normal = -1;
+										index.m_texcoord = -1;
+										index.m_vbc = 0;
+										triangle.m_index[i] = index;
+									}
+									_mesh->m_triangles.push_back(triangle);
+								}
 							}
 							else
 							{
@@ -846,7 +866,7 @@ int main(int _argc, const char* _argv[])
 	}
 	else if (0 == bx::strCmpI(ext, ".gltf") || 0 == bx::strCmpI(ext, ".glb"))
 	{
-		parseGltf(data, size, &mesh, hasBc, ccw, scale);
+		parseGltf(data, size, &mesh, hasBc, ccw, scale, bx::FilePath(filePath).getPath());
 	}
 	else
 	{
