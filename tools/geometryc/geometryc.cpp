@@ -617,6 +617,98 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 			   , num );
 }
 
+void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
+{
+	cgltf_mesh* mesh = _node->mesh;
+	if (NULL != mesh)
+	{
+		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
+		{
+			cgltf_primitive* primitive = &mesh->primitives[primitiveIndex];
+			
+			cgltf_size numVertex = primitive->attributes[0].data->count;
+			
+			bool hasNormal = false;
+			
+			for (cgltf_size attributeIndex = 0; attributeIndex < primitive->attributes_count; ++attributeIndex)
+			{
+				cgltf_attribute* attribute = &primitive->attributes[attributeIndex];
+				cgltf_accessor* accessor = attribute->data;
+				
+				BX_CHECK(numVertex == accessor->count, "Invalid attribute count");
+				
+				if (attribute->type == cgltf_attribute_type_position && attribute->index == 0)
+				{
+					bx::Vec3 pos;
+					for(cgltf_size v=0;v<accessor->count;++v)
+					{
+						cgltf_accessor_read_float(accessor, v, &pos.x, 3);
+						_mesh->m_positions.push_back(pos);
+					}
+				}
+				else if (attribute->type == cgltf_attribute_type_normal && attribute->index == 0)
+				{
+					hasNormal = true;
+					bx::Vec3 normal;
+					for(cgltf_size v=0;v<accessor->count;++v)
+					{
+						cgltf_accessor_read_float(accessor, v, &normal.x, 3);
+						_mesh->m_normals.push_back(normal);
+					}
+				}
+			}
+			
+			if ( primitive->indices != NULL )
+			{
+				cgltf_accessor* accessor = primitive->indices;
+				
+				for(cgltf_size v=0;v<accessor->count; v+=3)
+				{
+					TriIndices triangle;
+					for(int i=0;i<3;++i)
+					{
+						Index3 index;
+						index.m_position = int32_t(cgltf_accessor_read_index(accessor, v+i));
+						index.m_normal = hasNormal ? index.m_position : -1;
+						index.m_texcoord = -1;
+						index.m_vbc = 0;
+						triangle.m_index[i] = index;
+					}
+					_mesh->m_triangles.push_back(triangle);
+				}
+			}
+			else
+			{
+				for(cgltf_size v=0;v<numVertex; v+=3)
+				{
+					TriIndices triangle;
+					for(int i=0;i<3;++i)
+					{
+						Index3 index;
+						index.m_position = int32_t(v * 3 + i);
+						index.m_normal = hasNormal ? index.m_position : -1;
+						index.m_texcoord = -1;
+						index.m_vbc = 0;
+						triangle.m_index[i] = index;
+					}
+					_mesh->m_triangles.push_back(triangle);
+				}
+			}
+			
+			_group->m_numTriangles = (uint32_t)(_mesh->m_triangles.size() ) - _group->m_startTriangle;
+			if (0 < _group->m_numTriangles)
+			{
+				_mesh->m_groups.push_back(*_group);
+				_group->m_startTriangle = (uint32_t)(_mesh->m_triangles.size() );
+				_group->m_numTriangles = 0;
+			}
+		}
+	}
+
+	for (cgltf_size childIndex = 0; childIndex < _node->children_count; ++childIndex)
+		parseGltfNode(_node->children[childIndex], _mesh, _group);
+}
+
 void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale, const bx::StringView& _path)
 {
 	Group group;
@@ -645,83 +737,7 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 				{
 					cgltf_node* node = &data->nodes[nodeIndex];
 					
-					//todo: nodes can have children - recurse
-					
-					cgltf_mesh* mesh = node->mesh;
-					if (NULL != mesh)
-					{
-						for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
-						{
-							cgltf_primitive* primitive = &mesh->primitives[primitiveIndex];
-
-							cgltf_size numVertex = primitive->attributes[0].data->count;
-							
-							for (cgltf_size attributeIndex = 0; attributeIndex < primitive->attributes_count; ++attributeIndex)
-							{
-								cgltf_attribute* attribute = &primitive->attributes[attributeIndex];
-								cgltf_accessor* accessor = attribute->data;
-								
-								BX_CHECK(numVertex == accessor->count, "Invalid attribute count");
-								
-								if (attribute->type == cgltf_attribute_type_position && attribute->index == 0)
-								{
-									bx::Vec3 pos;
-									for(cgltf_size v=0;v<accessor->count;++v)
-									{
-										cgltf_accessor_read_float(accessor, v, &pos.x, 3);
-										_mesh->m_positions.push_back(pos);
-									}
-								}
-							}
-							
-							if ( primitive->indices != NULL )
-							{
-								cgltf_accessor* accessor = primitive->indices;
-								
-								for(cgltf_size v=0;v<accessor->count; v+=3)
-								{
-									TriIndices triangle;
-									for(int i=0;i<3;++i)
-									{
-										Index3 index;
-										index.m_position = int32_t(cgltf_accessor_read_index(accessor, i));
-										index.m_normal = -1;
-										index.m_texcoord = -1;
-										index.m_vbc = 0;
-										triangle.m_index[i] = index;
-									}
-									_mesh->m_triangles.push_back(triangle);
-								}
-							}
-							else
-							{
-								for(cgltf_size v=0;v<numVertex; v+=3)
-								{
-									TriIndices triangle;
-									for(int i=0;i<3;++i)
-									{
-										Index3 index;
-										index.m_position = int32_t(v * 3 + i);
-										index.m_normal = -1;
-										index.m_texcoord = -1;
-										index.m_vbc = 0;
-										triangle.m_index[i] = index;
-									}
-									_mesh->m_triangles.push_back(triangle);
-								}
-							}
-							
-							group.m_numTriangles = (uint32_t)(_mesh->m_triangles.size() ) - group.m_startTriangle;
-							if (0 < group.m_numTriangles)
-							{
-								_mesh->m_groups.push_back(group);
-								group.m_startTriangle = (uint32_t)(_mesh->m_triangles.size() );
-								group.m_numTriangles = 0;
-							}
-							
-							_mesh->m_groups.push_back(group);
-						}
-					}
+					parseGltfNode(node, _mesh, &group);
 				}
 			}
 		}
@@ -977,7 +993,7 @@ int main(int _argc, const char* _argv[])
 	uint32_t* table = new uint32_t[tableSize];
 	bx::memSet(table, 0xff, tableSize * sizeof(uint32_t));
 	
-	stl::string material = mesh.m_groups.begin()->m_material;
+	stl::string material = mesh.m_groups.empty() ? "" : mesh.m_groups.begin()->m_material;
 
 	PrimitiveArray primitives;
 
@@ -1032,16 +1048,19 @@ int main(int _argc, const char* _argv[])
 
 				triReorderElapsed += bx::getHPCounter();
 
-				write(&writer
-					, vertexData
-					, numVertices
-					, decl
-					, indexData
-					, numIndices
-					, compress
-					, material
-					, primitives
-					);
+				if ( numVertices > 0 && numIndices > 0 )
+				{
+					write(&writer
+						  , vertexData
+						  , numVertices
+						  , decl
+						  , indexData
+						  , numIndices
+						  , compress
+						  , material
+						  , primitives
+						  );
+				}
 				primitives.clear();
 				
 				bx::memSet(table, 0xff, tableSize * sizeof(uint32_t));
@@ -1179,7 +1198,7 @@ int main(int _argc, const char* _argv[])
 		, double(parseElapsed)/bx::getHPFrequency()
 		, double(triReorderElapsed)/bx::getHPFrequency()
 		, double(convertElapsed)/bx::getHPFrequency()
-		, uint32_t(mesh.m_groups.size() )
+		, uint32_t(mesh.m_groups.size()-1)
 		, writtenPrimitives
 		, writtenVertices
 		, writtenIndices
