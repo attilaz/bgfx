@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include <bx/string.h>
+#include <bx/float4x4_t.h>
 #include <bgfx/bgfx.h>
 #include "../../src/vertexdecl.h"
 
@@ -617,19 +618,28 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 			   , num );
 }
 
-void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
+void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 {
 	cgltf_mesh* mesh = _node->mesh;
 	if (NULL != mesh)
 	{
+		bx::float4x4_t nodeToWorld;
+		cgltf_node_transform_world(_node, (float*)&nodeToWorld.col[0]);
+		//todo: inverseTranspose for normal
+		
 		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
 		{
 			cgltf_primitive* primitive = &mesh->primitives[primitiveIndex];
 			
 			cgltf_size numVertex = primitive->attributes[0].data->count;
 			
+			int32_t basePositionIndex = (int32_t)_mesh->m_positions.size();
+			int32_t baseNormalIndex = (int32_t)_mesh->m_normals.size();
+			int32_t baseTexcoordIndex = (int32_t)_mesh->m_texcoords.size();
+
 			bool hasNormal = false;
-			
+			bool hasTexcoord = false;
+
 			for (cgltf_size attributeIndex = 0; attributeIndex < primitive->attributes_count; ++attributeIndex)
 			{
 				cgltf_attribute* attribute = &primitive->attributes[attributeIndex];
@@ -639,11 +649,12 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
 				
 				if (attribute->type == cgltf_attribute_type_position && attribute->index == 0)
 				{
-					bx::Vec3 pos;
+					bx::simd128_t pos;
 					for(cgltf_size v=0;v<accessor->count;++v)
 					{
-						cgltf_accessor_read_float(accessor, v, &pos.x, 3);
-						_mesh->m_positions.push_back(pos);
+						cgltf_accessor_read_float(accessor, v, (float*)&pos, 3);
+						pos = simd_mul_xyz1(pos, &nodeToWorld);
+						_mesh->m_positions.push_back(bx::Vec3(bx::simd_x(pos), bx::simd_y(pos), bx::simd_z(pos)));
 					}
 				}
 				else if (attribute->type == cgltf_attribute_type_normal && attribute->index == 0)
@@ -654,6 +665,16 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
 					{
 						cgltf_accessor_read_float(accessor, v, &normal.x, 3);
 						_mesh->m_normals.push_back(normal);
+					}
+				}
+				else if (attribute->type == cgltf_attribute_type_texcoord && attribute->index == 0)
+				{
+					hasTexcoord = true;
+					bx::Vec3 texcoord;
+					for(cgltf_size v=0;v<accessor->count;++v)
+					{
+						cgltf_accessor_read_float(accessor, v, &texcoord.x, 3);
+						_mesh->m_texcoords.push_back(texcoord);
 					}
 				}
 			}
@@ -668,10 +689,11 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
 					for(int i=0;i<3;++i)
 					{
 						Index3 index;
-						index.m_position = int32_t(cgltf_accessor_read_index(accessor, v+i));
-						index.m_normal = hasNormal ? index.m_position : -1;
-						index.m_texcoord = -1;
-						index.m_vbc = 0;
+						int32_t vertexIndex = int32_t(cgltf_accessor_read_index(accessor, v+i));
+						index.m_position = basePositionIndex + vertexIndex;
+						index.m_normal = hasNormal ? baseNormalIndex + vertexIndex : -1;
+						index.m_texcoord = hasTexcoord ? baseTexcoordIndex + vertexIndex : -1;
+						index.m_vbc = _hasBc ? i : 0;
 						triangle.m_index[i] = index;
 					}
 					_mesh->m_triangles.push_back(triangle);
@@ -685,10 +707,11 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
 					for(int i=0;i<3;++i)
 					{
 						Index3 index;
-						index.m_position = int32_t(v * 3 + i);
-						index.m_normal = hasNormal ? index.m_position : -1;
-						index.m_texcoord = -1;
-						index.m_vbc = 0;
+						int32_t vertexIndex = int32_t(v * 3 + i);
+						index.m_position = basePositionIndex + vertexIndex;
+						index.m_normal = hasNormal ? baseNormalIndex + vertexIndex : -1;
+						index.m_texcoord = hasTexcoord ? baseTexcoordIndex + vertexIndex : -1;
+						index.m_vbc = _hasBc ? i : 0;
 						triangle.m_index[i] = index;
 					}
 					_mesh->m_triangles.push_back(triangle);
@@ -706,7 +729,7 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group)
 	}
 
 	for (cgltf_size childIndex = 0; childIndex < _node->children_count; ++childIndex)
-		parseGltfNode(_node->children[childIndex], _mesh, _group);
+		parseGltfNode(_node->children[childIndex], _mesh, _group, _hasBc);
 }
 
 void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale, const bx::StringView& _path)
@@ -737,7 +760,7 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw,
 				{
 					cgltf_node* node = &data->nodes[nodeIndex];
 					
-					parseGltfNode(node, _mesh, &group);
+					parseGltfNode(node, _mesh, &group, _hasBc);
 				}
 			}
 		}
@@ -769,6 +792,7 @@ void help(const char* _error = NULL)
 		  "\n"
 		  "Supported input file types:\n"
 		  "    *.obj                  Wavefront\n"
+		  "    *.gltf,*.glb           glTF 2.0\n"
 
 		  "\n"
 		  "Options:\n"

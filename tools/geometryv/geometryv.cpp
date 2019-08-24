@@ -45,6 +45,30 @@ static const bgfx::EmbeddedShader s_embeddedShaders[] =
 	BGFX_EMBEDDED_SHADER_END()
 };
 
+static const char* s_attribShortNames[] =
+{
+	"P",   // Position
+	"N",   // Normal
+	"T",   // Tangent
+	"B",   // Bitangent
+	"C0",  // Color0
+	"C1",  // Color1
+	"C2",  // Color2
+	"C3",  // Color3
+	"I",   // Indices
+	"W",   // Weight
+	"TC0", // TexCoord0
+	"TC1", // TexCoord1
+	"TC2", // TexCoord2
+	"TC3", // TexCoord3
+	"TC4", // TexCoord4
+	"TC5", // TexCoord5
+	"TC6", // TexCoord6
+	"TC7", // TexCoord7
+};
+BX_STATIC_ASSERT(BX_COUNTOF(s_attribShortNames) == bgfx::Attrib::Count);
+
+
 static const char* s_supportedExt[] =
 {
 	"bin",
@@ -951,7 +975,14 @@ int _main_(int _argc, char** _argv)
 						}
 						else
 						{
-							ImGui::Text("Name: %s", view.m_fileList[view.m_fileIndex].c_str() );
+							char layout[128] = {0};
+							for(int32_t attrib = bgfx::Attrib::Position; attrib < bgfx::Attrib::Count; attrib++)
+							{
+								if ( mesh->m_decl.has(bgfx::Attrib::Enum(attrib)) )
+									bx::strCat(layout, sizeof(layout), s_attribShortNames[attrib]);
+							}
+
+							ImGui::Text("Name: %s %s", view.m_fileList[view.m_fileIndex].c_str(), layout);
 
 							ImGui::Indent();
 							for (GroupArray::const_iterator itGroup = mesh->m_groups.begin(), itGroupEnd = mesh->m_groups.end(); itGroup != itGroupEnd; ++itGroup)
