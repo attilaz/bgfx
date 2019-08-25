@@ -6,7 +6,6 @@
 #include <algorithm>
 
 #include <bx/string.h>
-#include <bx/float4x4_t.h>
 #include <bgfx/bgfx.h>
 #include "../../src/vertexdecl.h"
 
@@ -372,7 +371,7 @@ struct Mesh
 	GroupArray m_groups;
 };
 
-void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale)
+void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 {
 	// Reference(s):
 	// - Wavefront .obj file
@@ -464,25 +463,13 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 							triangle.m_index[edge] = index;
 							if (2 == edge)
 							{
-								if (_ccw)
-								{
-									bx::swap(triangle.m_index[1], triangle.m_index[2]);
-								}
 								_mesh->m_triangles.push_back(triangle);
 							}
 							break;
 							
 						default:
-							if (_ccw)
-							{
-								triangle.m_index[2] = triangle.m_index[1];
-								triangle.m_index[1] = index;
-							}
-							else
-							{
-								triangle.m_index[1] = triangle.m_index[2];
-								triangle.m_index[2] = index;
-							}
+							triangle.m_index[1] = triangle.m_index[2];
+							triangle.m_index[2] = index;
 							
 							_mesh->m_triangles.push_back(triangle);
 							break;
@@ -561,7 +548,7 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, 
 						pw = 1.0f;
 					}
 					
-					float invW = _scale/pw;
+					float invW = 1.0f/pw;
 					px *= invW;
 					py *= invW;
 					pz *= invW;
@@ -623,8 +610,8 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 	cgltf_mesh* mesh = _node->mesh;
 	if (NULL != mesh)
 	{
-		bx::float4x4_t nodeToWorld;
-		cgltf_node_transform_world(_node, (float*)&nodeToWorld.col[0]);
+		float nodeToWorld[16];
+		cgltf_node_transform_world(_node, nodeToWorld);
 		//todo: inverseTranspose for normal
 		
 		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
@@ -649,12 +636,12 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 				
 				if (attribute->type == cgltf_attribute_type_position && attribute->index == 0)
 				{
-					bx::simd128_t pos;
+					bx::Vec3 pos;
 					for(cgltf_size v=0;v<accessor->count;++v)
 					{
-						cgltf_accessor_read_float(accessor, v, (float*)&pos, 3);
-						pos = simd_mul_xyz1(pos, &nodeToWorld);
-						_mesh->m_positions.push_back(bx::Vec3(bx::simd_x(pos), bx::simd_y(pos), bx::simd_z(pos)));
+						cgltf_accessor_read_float(accessor, v, (float*)&pos.x, 3);
+						pos = mul(pos, nodeToWorld);
+						_mesh->m_positions.push_back(pos);
 					}
 				}
 				else if (attribute->type == cgltf_attribute_type_normal && attribute->index == 0)
@@ -732,7 +719,7 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 		parseGltfNode(_node->children[childIndex], _mesh, _group, _hasBc);
 }
 
-void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, bool _ccw, float _scale, const bx::StringView& _path)
+void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::StringView& _path)
 {
 	Group group;
 	group.m_startTriangle = 0;
@@ -902,11 +889,11 @@ int main(int _argc, const char* _argv[])
 	bx::StringView ext = bx::FilePath(filePath).getExt();
 	if (0 == bx::strCmpI(ext, ".obj"))
 	{
-		parseObj(data, size, &mesh, hasBc, ccw, scale);
+		parseObj(data, size, &mesh, hasBc);
 	}
 	else if (0 == bx::strCmpI(ext, ".gltf") || 0 == bx::strCmpI(ext, ".glb"))
 	{
-		parseGltf(data, size, &mesh, hasBc, ccw, scale, bx::FilePath(filePath).getPath());
+		parseGltf(data, size, &mesh, hasBc, bx::FilePath(filePath).getPath());
 	}
 	else
 	{
@@ -939,6 +926,14 @@ int main(int _argc, const char* _argv[])
 			for (uint32_t i = 0; i < 3; ++i)
 			{
 				hasNormal |= -1 != jt->m_index[i].m_normal;
+			}
+		}
+		
+		if (ccw)
+		{
+			for (TriangleArray::iterator jt = mesh.m_triangles.begin(), jtEnd = mesh.m_triangles.end(); jt != jtEnd; ++jt)
+			{
+				bx::swap(jt->m_index[1], jt->m_index[2]);
 			}
 		}
 	}
@@ -1114,6 +1109,10 @@ int main(int _argc, const char* _argv[])
 				float* position = (float*)(vertices + positionOffset);
 				bx::memCopy(position, &mesh.m_positions[index.m_position], 3*sizeof(float) );
 				
+				position[0] *= scale;
+				position[1] *= scale;
+				position[2] *= scale;
+
 				if (hasColor)
 				{
 					uint32_t* color0 = (uint32_t*)(vertices + color0Offset);
@@ -1122,12 +1121,14 @@ int main(int _argc, const char* _argv[])
 				
 				if (hasBc)
 				{
-					const float bc[3] =
+					const float bc[4] =
 					{
 						(index.m_vbc == 0) ? 1.0f : 0.0f,
 						(index.m_vbc == 1) ? 1.0f : 0.0f,
 						(index.m_vbc == 2) ? 1.0f : 0.0f,
+						0.0f
 					};
+					
 					bgfx::vertexPack(bc, true, bgfx::Attrib::Color1, decl, vertices);
 				}
 				
