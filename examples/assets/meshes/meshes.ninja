@@ -16,3 +16,20 @@ build $meshes/tree1b_lod1_2.bin:   geometryc_pack_normal_compressed  $pwd/tree1b
 build $meshes/tree1b_lod2_1.bin:   geometryc_pack_normal_compressed  $pwd/tree1b_lod2_1.obj
 build $meshes/tree1b_lod2_2.bin:   geometryc_pack_normal_compressed  $pwd/tree1b_lod2_2.obj
 build $meshes/test_scene.bin:      geometryc_pack_normal             $pwd/../sky/test_scene.obj
+
+
+build $meshes/gltf/bunny.bin:           geometryc_pack_normal_barycentric $pwd/gltf/bunny.glb
+build $meshes/gltf/bunny_decimated.bin: geometryc_pack_normal_compressed  $pwd/gltf/bunny_decimated.glb
+build $meshes/gltf/bunny_patched.bin:   geometryc_pack_normal             $pwd/gltf/bunny_patched.glb
+build $meshes/gltf/column.bin:          geometryc_pack_normal             $pwd/gltf/column.glb
+build $meshes/gltf/cube.bin:            geometryc_pack_normal             $pwd/gltf/cube.glb
+build $meshes/gltf/hollowcube.bin:      geometryc_pack_normal_barycentric $pwd/gltf/hollowcube.glb
+build $meshes/gltf/orb.bin:             geometryc_pack_normal_barycentric $pwd/gltf/orb.glb
+build $meshes/gltf/platform.bin:        geometryc_pack_normal             $pwd/gltf/platform.glb
+build $meshes/gltf/tree.bin:            geometryc_pack_normal_compressed  $pwd/gltf/tree.glb
+build $meshes/gltf/tree1b_lod0_1.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod0_1.glb
+build $meshes/gltf/tree1b_lod0_2.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod0_2.glb
+build $meshes/gltf/tree1b_lod1_1.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod1_1.glb
+build $meshes/gltf/tree1b_lod1_2.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod1_2.glb
+build $meshes/gltf/tree1b_lod2_1.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod2_1.glb
+build $meshes/gltf/tree1b_lod2_2.bin:   geometryc_pack_normal_compressed  $pwd/gltf/tree1b_lod2_2.glb
