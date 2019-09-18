@@ -1,0 +1,10 @@
+#metal
+
+-f vs_pbr_mesh.sc -o vs_pbr_mesh.bin -i ../../src --type v --platform ios -p metal
+-f fs_pbr_mesh.sc -o fs_pbr_mesh.bin -i ../../src --type f --platform ios -p metal
+
+
+#d3d11
+
+-f vs_pbr_mesh.sc -o vs_pbr_mesh.bin -i ../../src --type v --platform windows -p vs_5_0 -O 3 
+-f fs_pbr_mesh.sc -o fs_pbr_mesh.bin -i ../../src --type f --platform windows -p ps_5_0 -O 3 

@@ -1,4 +1,7 @@
 void main() {
+	mesh_position = a_position;
+
+
     // Initialize the inputs to sensible default values, see material_inputs.vs
     MaterialVertexInputs material;
     initMaterialVertex(material);

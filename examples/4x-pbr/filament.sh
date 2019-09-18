@@ -1,3 +1,10 @@
+/*
+documentation about interface (macros, varyings, uniforms)
+
+
+*/
+
+
 
 #define LOCATION_POSITION (0)
 
@@ -86,3 +93,51 @@ uniform mediump samplerCube light_iblSpecular;
 uniform mediump sampler2D light_ssao;
 
 static highp vec4 FragCoord;
+
+#if BGFX_SHADER_TYPE_VERTEX
+
+#define VERTEX_DOMAIN_OBJECT
+//#define VERTEX_DOMAIN_DEVICE
+
+#include "filament_uniforms.sh"
+#include "common_math.fs"
+#include "inputs.vs"
+#include "common_getters.fs"
+#include "getters.vs"
+#include "material_inputs.vs"
+void materialVertex(inout MaterialVertexInputs material);
+#include "main.vs"
+
+#endif
+
+#if BGFX_SHADER_TYPE_FRAGMENT
+
+#define LAYOUT_LOCATION(A)
+
+#include "filament_uniforms.sh"
+#include "material_inputs.fs"
+#include "inputs.fs"
+#include "common_shading.fs"
+#include "getters.fs"
+#include "shading_parameters.fs"
+void material(inout MaterialInputs material);
+
+#include "common_math.fs"
+#include "common_lighting.fs"
+#include "common_material.fs"
+#include "common_graphics.fs"
+
+#include "ambient_occlusion.fs"
+
+#include "brdf.fs"
+#include "shading_model_standard.fs"
+
+#include "light_indirect.fs"
+#include "light_punctual.fs"
+#include "light_directional.fs"
+
+#include "shading_lit.fs"
+//#include "shading_unlit.fs"
+#include "main.fs"
+
+#endif

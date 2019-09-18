@@ -1,4 +1,5 @@
-layout(location = LOCATION_POSITION) in vec4 mesh_position;
+//layout(location = LOCATION_POSITION) in vec4 mesh_position;
+static vec4 mesh_position;
 
 #if defined(HAS_ATTRIBUTE_TANGENTS)
 layout(location = LOCATION_TANGENTS) in vec4 mesh_tangents;
@@ -56,7 +57,8 @@ layout(location = LOCATION_CUSTOM6) in vec4 mesh_custom6;
 layout(location = LOCATION_CUSTOM7) in vec4 mesh_custom7;
 #endif
 
-LAYOUT_LOCATION(4) out highp vec3 vertex_worldPosition;
+//LAYOUT_LOCATION(4) out highp vec3 vertex_worldPosition;
+#define vertex_worldPosition v_vertex_worldPosition
 #if defined(HAS_ATTRIBUTE_TANGENTS)
 LAYOUT_LOCATION(5) SHADING_INTERPOLATION out mediump vec3 vertex_worldNormal;
 #if defined(MATERIAL_HAS_ANISOTROPY) || defined(MATERIAL_HAS_NORMAL) || defined(MATERIAL_HAS_CLEAR_COAT_NORMAL)
