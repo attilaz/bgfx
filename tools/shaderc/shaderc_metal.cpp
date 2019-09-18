@@ -611,6 +611,8 @@ namespace bgfx { namespace metal
 			bx::printf("Error: Unknown shader type '%c'.\n", _options.shaderType);
 			return false;
 		}
+		bx::printf("Shader Code:%s", _code.c_str());
+		
 		glslang::TShader* shader = new glslang::TShader(stage);
 
 		EShMessages messages = EShMessages(0
@@ -801,6 +803,12 @@ namespace bgfx { namespace metal
 
 				glslang::SpvOptions options;
 				options.disableOptimizer = false;
+				
+				options.generateDebugInfo = true;
+				//options.disableOptimizer;
+				//options.disassemble;
+				options.validate = true;
+
 
 				glslang::GlslangToSpv(*intermediate, spirv, &options);
 
