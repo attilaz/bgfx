@@ -4,32 +4,38 @@
 
 /** @public-api */
 mat4 getViewFromWorldMatrix() {
-    return frameUniforms.viewFromWorldMatrix;
+	return u_view;
+    //return frameUniforms.viewFromWorldMatrix;
 }
 
 /** @public-api */
 mat4 getWorldFromViewMatrix() {
-    return frameUniforms.worldFromViewMatrix;
+	return u_invView;
+    //return frameUniforms.worldFromViewMatrix;
 }
 
 /** @public-api */
 mat4 getClipFromViewMatrix() {
-    return frameUniforms.clipFromViewMatrix;
+	return u_proj;
+    //return frameUniforms.clipFromViewMatrix;
 }
 
 /** @public-api */
 mat4 getViewFromClipMatrix() {
-    return frameUniforms.viewFromClipMatrix;
+	return u_invProj;
+    //return frameUniforms.viewFromClipMatrix;
 }
 
 /** @public-api */
 mat4 getClipFromWorldMatrix() {
-    return frameUniforms.clipFromWorldMatrix;
+	return u_viewProj;
+    //return frameUniforms.clipFromWorldMatrix;
 }
 
 /** @public-api */
 mat4 getWorldFromClipMatrix() {
-    return frameUniforms.worldFromClipMatrix;
+	return u_invViewProj;
+    //return frameUniforms.worldFromClipMatrix;
 }
 
 /** @public-api */

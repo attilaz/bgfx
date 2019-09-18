@@ -117,3 +117,26 @@ void material(inout MaterialInputs material) {
 	prepareMaterial(material);
 	material.baseColor.rgb = vec3_splat(0.8);
 }
+
+#if 0
+#include <simd/simd.h>
+
+using namespace metal;
+
+constant float _1696 = {};
+constant float3 _1697 = {};
+constant float4 _1698 = {};
+
+struct xlatMtlMain_out
+{
+    float4 bgfx_FragData0 [[color(0)]];
+};
+
+fragment xlatMtlMain_out xlatMtlMain(texture2d<float> light_iblDFG [[texture(3)]], texturecube<float> light_iblSpecular [[texture(4)]], texture2d<float> light_ssao [[texture(5)]], sampler light_iblDFGSampler [[sampler(3)]], sampler light_iblSpecularSampler [[sampler(4)]], sampler light_ssaoSampler [[sampler(5)]], float4 gl_FragCoord [[position]])
+{
+    xlatMtlMain_out out = {};
+    float4 _1030 = light_iblDFG.sample(light_iblDFGSampler, float2(_1696, 1.0), level(0.0));
+    float2 _1676;
+    out.bgfx_FragData0 = float4((((float3(0.800000011920928955078125) * fast::max((((((((_1697 + (_1697 * _1697.y)) + (_1697 * _1697.z)) + (_1697 * _1697.x)) + (_1697 * (_1697.y * _1697.x))) + (_1697 * (_1697.y * _1697.z))) + (_1697 * (((3.0 * _1697.z) * _1697.z) - 1.0))) + (_1697 * (_1697.z * _1697.x))) + (_1697 * ((_1697.x * _1697.x) - (_1697.y * _1697.y))), float3(0.0))) * fast::min(1.0, light_ssao.sample(light_ssaoSampler, (gl_FragCoord.xy * _1698.zw)).x)) + (((float3(0.039999999105930328369140625) * _1030.x) + float3(_1030.y)) * light_iblSpecular.sample(light_iblSpecularSampler, _1697, level(_1676.x)).xyz)) * _1696, 1.0);
+    return out;
+}#endif

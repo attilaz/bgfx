@@ -8,7 +8,8 @@ mat4 getLightFromWorldMatrix() {
 
 /** @public-api */
 mat4 getWorldFromModelMatrix() {
-    return objectUniforms.worldFromModelMatrix;
+	return u_model[0];
+    //return objectUniforms.worldFromModelMatrix;
 }
 
 /** @public-api */

@@ -9,12 +9,13 @@ documentation about interface (macros, varyings, uniforms)
 
 struct FrameUniforms
 {
-	highp mat4 viewFromWorldMatrix;
+/*	highp mat4 viewFromWorldMatrix;
 	highp mat4 worldFromViewMatrix;
 	highp mat4 clipFromViewMatrix;
 	highp mat4 viewFromClipMatrix;
 	highp mat4 clipFromWorldMatrix;
 	highp mat4 worldFromClipMatrix;
+*/
 	highp mat4 lightFromWorldMatrix;
 	highp float4 resolution;
 	highp float3 cameraPosition;
@@ -66,14 +67,14 @@ uniform BonesUniforms bonesUniforms;
 
 struct ObjectUniforms
 {
-	highp mat4 worldFromModelMatrix;
+//	highp mat4 worldFromModelMatrix;
 	highp mat3 worldFromModelNormalMatrix;
 	highp float4 morphWeights;
 	int skinningEnabled;
 	int morphingEnabled;
 	float2 padding0;
 };
-ObjectUniforms objectUniforms;
+uniform ObjectUniforms objectUniforms;
 
 #define VERTEX_DOMAIN_OBJECT
 //#define VERTEX_DOMAIN_DEVICE
@@ -91,12 +92,12 @@ void materialVertex(inout MaterialVertexInputs material);
 
 #if BGFX_SHADER_TYPE_FRAGMENT
 
-uniform lowp sampler2DShadow light_shadowMap;
-ISAMPLER2D(light_records, 1); //uniform mediump isampler2D light_records;
-ISAMPLER2D(light_froxels, 2); //uniform mediump isampler2D light_froxels;
-uniform mediump sampler2D light_iblDFG;
-uniform mediump samplerCube light_iblSpecular;
-uniform mediump sampler2D light_ssao;
+SAMPLER2DSHADOW(light_shadowMap, 0); 
+ISAMPLER2D(light_records, 1); 
+ISAMPLER2D(light_froxels, 2); 
+SAMPLER2D(light_iblDFG, 3); 
+SAMPLERCUBE(light_iblSpecular, 4); 
+SAMPLER2D(light_ssao, 5);
 
 static highp vec4 FragCoord;
 
