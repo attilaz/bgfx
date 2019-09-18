@@ -139,4 +139,5 @@ fragment xlatMtlMain_out xlatMtlMain(texture2d<float> light_iblDFG [[texture(3)]
     float2 _1676;
     out.bgfx_FragData0 = float4((((float3(0.800000011920928955078125) * fast::max((((((((_1697 + (_1697 * _1697.y)) + (_1697 * _1697.z)) + (_1697 * _1697.x)) + (_1697 * (_1697.y * _1697.x))) + (_1697 * (_1697.y * _1697.z))) + (_1697 * (((3.0 * _1697.z) * _1697.z) - 1.0))) + (_1697 * (_1697.z * _1697.x))) + (_1697 * ((_1697.x * _1697.x) - (_1697.y * _1697.y))), float3(0.0))) * fast::min(1.0, light_ssao.sample(light_ssaoSampler, (gl_FragCoord.xy * _1698.zw)).x)) + (((float3(0.039999999105930328369140625) * _1030.x) + float3(_1030.y)) * light_iblSpecular.sample(light_iblSpecularSampler, _1697, level(_1676.x)).xyz)) * _1696, 1.0);
     return out;
-}#endif
+}
+#endif
