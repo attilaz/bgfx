@@ -59,7 +59,7 @@ vec3 inverseTonemapSRGB(vec3 color) {
 vec3 inverseTonemap(vec3 linearColor) {
     // Linear input
     linearColor = clamp(linearColor, 0.0, 1.0);
-    return Inverse_Tonemap_Unreal(pow(linearColor, vec3(1.0 / 2.2)));
+    return Inverse_Tonemap_Unreal(pow(linearColor, vec3_splat(1.0 / 2.2)));
 }
 
 //------------------------------------------------------------------------------

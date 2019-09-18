@@ -175,7 +175,7 @@ vec3 fresnel(const vec3 f0, float LoH) {
 #if defined(TARGET_MOBILE)
     return F_Schlick(f0, LoH); // f90 = 1.0
 #else
-    float f90 = saturate(dot(f0, vec3(50.0 * 0.33)));
+    float f90 = saturate(dot(f0, vec3_splat(50.0 * 0.33)));
     return F_Schlick(f0, f90, LoH);
 #endif
 #endif

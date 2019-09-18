@@ -101,7 +101,7 @@ void main() {
     // The other vertex domains are handled in initMaterialVertex()->computeWorldPosition()
     gl_Position = getPosition();
 #else
-    gl_Position = getClipFromWorldMatrix() * getWorldPosition(material);
+    gl_Position = mul(getClipFromWorldMatrix(), getWorldPosition(material));
 #endif
 
 #if defined(TARGET_VULKAN_ENVIRONMENT)

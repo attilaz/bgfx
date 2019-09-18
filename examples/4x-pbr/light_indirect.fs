@@ -74,7 +74,7 @@ vec3 Irradiance_SphericalHarmonics(const vec3 n) {
 // IBL irradiance dispatch
 //------------------------------------------------------------------------------
 
-vec3 diffuseIrradiance(const vec3 n) {
+vec3 diffuseIrradiance_(const vec3 n) {
     return Irradiance_SphericalHarmonics(n);
 }
 
@@ -356,7 +356,7 @@ void evaluateIBL(const MaterialInputs material, const PixelParams pixel, inout v
     float diffuseBRDF = singleBounceAO(diffuseAO);// Fd_Lambert() is baked in the SH below
     evaluateClothIndirectDiffuseBRDF(pixel, diffuseBRDF);
 
-    vec3 diffuseIrradiance = diffuseIrradiance(n);
+    vec3 diffuseIrradiance = diffuseIrradiance_(n);
     vec3 Fd = pixel.diffuseColor * diffuseIrradiance * diffuseBRDF;
 
     // specular indirect

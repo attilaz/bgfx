@@ -7,5 +7,5 @@ $input v_vertex_worldPosition
 
 void material(inout MaterialInputs material) {
 	prepareMaterial(material);
-	material.baseColor.rgb = vec3(0.8);
+	material.baseColor.rgb = vec3_splat(0.8);
 }

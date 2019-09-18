@@ -60,7 +60,9 @@ struct MaterialInputs {
 };
 
 void initMaterial(out MaterialInputs material) {
-    material.baseColor = vec4(1.0);
+	material = (MaterialInputs)0;
+    material.baseColor = vec4_splat(1.0);
+
 #if !defined(SHADING_MODEL_UNLIT)
 #if !defined(SHADING_MODEL_SPECULAR_GLOSSINESS)
     material.roughness = 1.0;
@@ -71,7 +73,7 @@ void initMaterial(out MaterialInputs material) {
 #endif
     material.ambientOcclusion = 1.0;
 #endif
-    material.emissive = vec4(0.0);
+    material.emissive = vec4_splat(0.0);
 
 #if defined(MATERIAL_HAS_CLEAR_COAT)
     material.clearCoat = 1.0;
@@ -86,13 +88,13 @@ void initMaterial(out MaterialInputs material) {
 #if defined(SHADING_MODEL_SUBSURFACE)
     material.thickness = 0.5;
     material.subsurfacePower = 12.234;
-    material.subsurfaceColor = vec3(1.0);
+    material.subsurfaceColor = vec3_splat(1.0);
 #endif
 
 #if defined(SHADING_MODEL_CLOTH)
     material.sheenColor = sqrt(material.baseColor.rgb);
 #if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
-    material.subsurfaceColor = vec3(0.0);
+    material.subsurfaceColor = vec3_splat(0.0);
 #endif
 #endif
 

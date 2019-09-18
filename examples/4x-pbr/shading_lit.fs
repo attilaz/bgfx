@@ -165,7 +165,7 @@ void getEnergyCompensationPixelParams(inout PixelParams pixel) {
     // See "Multiple-Scattering Microfacet BSDFs with the Smith Model"
     pixel.energyCompensation = 1.0 + pixel.f0 * (1.0 / pixel.dfg.y - 1.0);
 #else
-    pixel.energyCompensation = vec3(1.0);
+    pixel.energyCompensation = vec3_splat(1.0);
 #endif
 }
 
@@ -178,6 +178,7 @@ void getEnergyCompensationPixelParams(inout PixelParams pixel) {
  * testing fails.
  */
 void getPixelParams(const MaterialInputs material, out PixelParams pixel) {
+	pixel = (PixelParams)0;
     getCommonPixelParams(material, pixel);
     getClearCoatPixelParams(material, pixel);
     getRoughnessPixelParams(material, pixel);
@@ -203,7 +204,7 @@ vec4 evaluateLights(const MaterialInputs material) {
     // Ideally we would keep the diffuse and specular components separate
     // until the very end but it costs more ALUs on mobile. The gains are
     // currently not worth the extra operations
-    vec3 color = vec3(0.0);
+    vec3 color = vec3_splat(0.0);
 
     // We always evaluate the IBL as not having one is going to be uncommon,
     // it also saves 1 shader variant
