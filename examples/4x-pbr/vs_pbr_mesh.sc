@@ -73,6 +73,9 @@ $output v_vertex_worldPosition, v_view, v_normal
     cg.generateShaderMain(vs, ShaderType::VERTEX);
 #endif
 
+#define VERTEX_DOMAIN_OBJECT
+//#define VERTEX_DOMAIN_DEVICE
+
 #include "filament.sh"
 
 void materialVertex(inout MaterialVertexInputs material) {
