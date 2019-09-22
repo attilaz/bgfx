@@ -1,4 +1,4 @@
-$input v_vertex_worldPosition
+$input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_lightSpacePosition
 
 #include "../common/common.sh"
 
@@ -113,10 +113,20 @@ $input v_vertex_worldPosition
 
 #include "filament.sh"
 
-void material(inout MaterialInputs material) {
-	prepareMaterial(material);
-	material.baseColor.rgb = vec3_splat(0.8);
+void main() {
+
+	filamentSetWorldPosition(v_worldPosition);
+	filementSetTangentSpace(v_worldNormal, v_worldTangent, v_worldBitangent, gl_FrontFacing);
+
+    // Initialize the inputs to sensible default values, see material_inputs.fs
+    MaterialInputs inputs;
+    initMaterial(inputs);
+
+    // todo: modify material inputs here
+
+    gl_FragColor = filamentEvaluate(inputs);
 }
+
 
 #if 0
 #include <simd/simd.h>
