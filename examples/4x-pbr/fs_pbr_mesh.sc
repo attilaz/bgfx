@@ -113,6 +113,27 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 
 #include "filament.sh"
 
+#if 0
+void main() {
+	VertexOutput vertexIn;
+	initVertexOutput(vertexIn);
+	vertexIn.worldPosition = v_worldPosition;
+	vertexIn.worldNormal = v_worldNormal;
+	vertexIn.worldTangent = v_worldTangent;
+	vertexIn.worldBitangent = v_worldBitangent;
+	vertexIn.frontFacing = gl_FrontFacing;
+
+	// Initialize the inputs to sensible default values, see material_inputs.fs
+	MaterialInputs materialIn;
+	initMaterial(materialIn);
+
+	// todo: modify material inputs here
+
+	gl_FragColor = evaluate(vertexIn, materialIn);
+}
+
+#endif
+
 void main() {
 
 	filamentSetWorldPosition(v_worldPosition);

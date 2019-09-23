@@ -78,6 +78,28 @@ $output v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_ligh
 #include "filament.sh"
 
 
+#if 0
+void main()
+{
+	VertexAttributes attributes;
+	initAttributes(attributes);
+	attributes.position = a_position;
+#if defined(HAS_ATTRIBUTE_TANGENTS)
+	attributes.tangents = vec4(0.0,0.0,0.0,1.0);
+#endif
+
+	VertexOutput output;
+	evaluate(output, attributes);
+
+	v_worldPosition = output.worldPosition;
+	v_worldNormal = output.worldNormal;
+	v_worldTangent = output.worldTangent;
+	v_worldBitangent = output.worldBitangent;
+	v_lightSpacePosition = output.lightSpacePosition;
+	gl_Position = output.clipPosition;
+}
+#endif
+
 void main()
 {
 	filamentSetAttributePosition(a_position);
