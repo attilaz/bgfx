@@ -116,7 +116,7 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 void main() {
 
 	filamentSetWorldPosition(v_worldPosition);
-	filementSetTangentSpace(v_worldNormal, v_worldTangent, v_worldBitangent, gl_FrontFacing);
+	filamentSetTangentSpace(v_worldNormal, v_worldTangent, v_worldBitangent, gl_FrontFacing);
 
     // Initialize the inputs to sensible default values, see material_inputs.fs
     MaterialInputs inputs;
