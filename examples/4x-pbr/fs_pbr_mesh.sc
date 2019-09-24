@@ -113,15 +113,15 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 
 #include "filament.sh"
 
-#if 0
 void main() {
-	VertexOutput vertexIn;
-	initVertexOutput(vertexIn);
-	vertexIn.worldPosition = v_worldPosition;
-	vertexIn.worldNormal = v_worldNormal;
-	vertexIn.worldTangent = v_worldTangent;
-	vertexIn.worldBitangent = v_worldBitangent;
-	vertexIn.frontFacing = gl_FrontFacing;
+	FragmentStageInputs stageIn;
+	initFragmentStageInputs(stageIn);
+	stageIn.worldPosition = v_worldPosition;
+	stageIn.worldNormal = v_worldNormal;
+	stageIn.worldTangent = v_worldTangent;
+	stageIn.worldBitangent = v_worldBitangent;
+	stageIn.fragCoord = gl_FragCoord;
+	stageIn.frontFacing = gl_FrontFacing;
 
 	// Initialize the inputs to sensible default values, see material_inputs.fs
 	MaterialInputs materialIn;
@@ -129,25 +129,8 @@ void main() {
 
 	// todo: modify material inputs here
 
-	gl_FragColor = evaluate(vertexIn, materialIn);
+	gl_FragColor = evaluate(materialIn, stageIn);
 }
-
-#endif
-
-void main() {
-
-	filamentSetWorldPosition(v_worldPosition);
-	filamentSetTangentSpace(v_worldNormal, v_worldTangent, v_worldBitangent, gl_FrontFacing);
-
-    // Initialize the inputs to sensible default values, see material_inputs.fs
-    MaterialInputs inputs;
-    initMaterial(inputs);
-
-    // todo: modify material inputs here
-
-    gl_FragColor = filamentEvaluate(inputs);
-}
-
 
 #if 0
 #include <simd/simd.h>
