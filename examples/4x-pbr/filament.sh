@@ -20,6 +20,7 @@ SHADING_MODEL_CLOTH              - cloth shading
 SHADING_MODEL_SUBSURFACE         - subsurface scattering
 SHADING_MODEL_UNLIT              - unlit
 
+	// material
 MATERIAL_HAS_SUBSURFACE_COLOR
 MATERIAL_HAS_NORMAL	//vertex/fragment option
 MATERIAL_HAS_CLEAR_COAT
@@ -30,14 +31,15 @@ MATERIAL_HAS_AMBIENT_OCCLUSION
 MATERIAL_HAS_CLEAR_COAT_ROUGHNESS
 MATERIAL_HAS_EMISSIVE
 
+	//lighting
 HAS_SHADOWING	//vertex/fragment
-HAS_DIRECTIONAL_LIGHTING
+HAS_DIRECTIONAL_LIGHTING		//vertex/fragment
 HAS_DYNAMIC_LIGHTING
-HAS_SHADOW_MULTIPLIER
+HAS_SHADOW_MULTIPLIER	// used when SHADING_MODEL_UNLIT
 
 GEOMETRIC_SPECULAR_AA
 SPECULAR_AMBIENT_OCCLUSION	// 0 / 1
-MULTI_BOUNCE_AMBIENT_OCCLUSION
+MULTI_BOUNCE_AMBIENT_OCCLUSION		// 0 / 1
 CLEAR_COAT_IOR_CHANGE
 
 BLEND_MODE_MASKED
@@ -55,7 +57,7 @@ uniform float4 u_frameUniforms[25];
 #define u_frameUniforms_sun u_frameUniforms[7]
 #define u_frameUniforms_lightDirection u_frameUniforms[8].xyz
 #define u_frameUniforms_fParamsX uint(u_frameUniforms[8].w)
-#define u_frameUniforms_shadowBias uint(u_frameUniforms[9].xyz)
+#define u_frameUniforms_shadowBias u_frameUniforms[9].xyz
 #define u_frameUniforms_oneOverFroxelDimensionY uint(u_frameUniforms[9].w)
 #define u_frameUniforms_zParams u_frameUniforms[10]
 #define u_frameUniforms_fParams uint2(u_frameUniforms[11].xy)
@@ -92,6 +94,12 @@ uniform float4 u_objectUniforms[5];
 #define CONFIG_MAX_LIGHT_COUNT (256)
 uniform highp float4 u_lights[CONFIG_MAX_LIGHT_COUNT*4];
 
+uniform float4 u_materialParams[1];
+#define u_materialParams_specularAntiAliasingVariance u_materialParams[0].x
+#define u_materialParams_specularAntiAliasingThreshold u_materialParams[0].y
+#define u_materialParams_maskThreshold u_materialParams[0].z
+#define u_materialParams_doubleSided (0.0 != u_materialParams[0].w)
+
 SAMPLER2DSHADOW(light_shadowMap, 0); 
 ISAMPLER2D(light_records, 1); 
 ISAMPLER2D(light_froxels, 2); 
@@ -100,6 +108,9 @@ SAMPLERCUBE(light_iblSpecular, 4);
 SAMPLER2D(light_ssao, 5);
 
 static highp vec4 s_FragCoord;
+#if defined(HAS_SHADOWING) && defined(HAS_DIRECTIONAL_LIGHTING)
+static highp vec4 vertex_lightSpacePosition;
+#endif
 
 #endif
 
@@ -418,6 +429,27 @@ vec4 computeWorldPosition() {
 #endif
 }
 
+//------------------------------------------------------------------------------
+// Shadowing
+//------------------------------------------------------------------------------
+
+#if defined(HAS_SHADOWING) && defined(HAS_DIRECTIONAL_LIGHTING)
+/**
+ * Computes the light space position of the specified world space point.
+ * The returned point may contain a bias to attempt to eliminate common
+ * shadowing artifacts such as "acne". To achieve this, the world space
+ * normal at the point must also be passed to this function.
+ */
+vec4 getLightSpacePosition(const vec3 p, const vec3 n) {
+    vec3 l = u_frameUniforms_lightDirection;
+    float NoL = saturate(dot(n, l));
+    float sinTheta = sqrt(1.0 - NoL * NoL);
+    vec3 offsetPosition = p + n * (sinTheta * u_frameUniforms_shadowBias.y);
+    vec4 lightSpacePosition = (getLightFromWorldMatrix() * vec4(offsetPosition, 1.0));
+    return lightSpacePosition;
+}
+#endif
+
 #endif //BGFX_SHADER_TYPE_VERTEX
 #if BGFX_SHADER_TYPE_FRAGMENT
 // Decide if we can skip lighting when dot(n, l) <= 0.0
@@ -546,7 +578,7 @@ static highp vec3  shading_position;         // position of the fragment in worl
 #if defined(BLEND_MODE_MASKED)
 /** @public-api */
 float getMaskThreshold() {
-    return materialParams._maskThreshold;
+    return u_materialParams_maskThreshold;
 }
 #endif
 
@@ -608,7 +640,7 @@ highp vec3 getLightSpacePosition() {
 
 #if defined(MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY)
 bool isDoubleSided() {
-    return materialParams._doubleSided;
+    return u_materialParams_doubleSided;
 }
 #endif
 
@@ -1419,7 +1451,7 @@ vec4 evaluateMaterial(const MaterialInputs material) {
 
 #if defined(HAS_DIRECTIONAL_LIGHTING)
 #if defined(HAS_SHADOWING)
-    color *= 1.0 - shadow(light_shadowMap, getLightSpacePosition());
+    color *= 1.0 - shadow2D(light_shadowMap, getLightSpacePosition());
 #else
     color = vec4_splat(0.0);
 #endif
@@ -2063,7 +2095,7 @@ void evaluateDirectionalLight(const MaterialInputs material,
     float visibility = 1.0;
 #if defined(HAS_SHADOWING)
     if (light.NoL > 0.0) {
-        visibility = shadow(light_shadowMap, getLightSpacePosition());
+        visibility = shadow2D(light_shadowMap, getLightSpacePosition());
         #if defined(MATERIAL_HAS_AMBIENT_OCCLUSION)
         visibility *= computeMicroShadowing(light.NoL, material.ambientOcclusion);
         #endif
@@ -2123,10 +2155,10 @@ float normalFiltering(float perceptualRoughness, const vec3 worldNormal) {
     vec3 du = dFdx(worldNormal);
     vec3 dv = dFdy(worldNormal);
 
-    float variance = materialParams._specularAntiAliasingVariance * (dot(du, du) + dot(dv, dv));
+    float variance = u_materialParams_specularAntiAliasingVariance * (dot(du, du) + dot(dv, dv));
 
     float roughness = perceptualRoughnessToRoughness(perceptualRoughness);
-    float kernelRoughness = min(2.0 * variance, materialParams._specularAntiAliasingThreshold);
+    float kernelRoughness = min(2.0 * variance, u_materialParams_specularAntiAliasingThreshold);
     float squareRoughness = saturate(roughness * roughness + kernelRoughness);
 
     return roughnessToPerceptualRoughness(sqrt(squareRoughness));
@@ -2475,6 +2507,7 @@ struct FragmentStageInputs
 	highp vec3 worldNormal;
 	highp vec3 worldTangent;
 	highp vec3 worldBitangent;
+	highp vec4 lightSpacePosition;
 	bool frontFacing;
 	highp vec4 fragCoord;
 };
@@ -2492,6 +2525,10 @@ vec4 evaluate(const MaterialInputs _inputs, FragmentStageInputs _stageInputs)
 {
 	shading_position = _stageInputs.worldPosition;
 	shading_view = normalize(u_frameUniforms_cameraPosition - shading_position);
+
+#if defined(HAS_SHADOWING) && defined(HAS_DIRECTIONAL_LIGHTING)
+	vertex_lightSpacePosition = _stageInputs.lightSpacePosition;
+#endif
 
 #if defined(HAS_ATTRIBUTE_TANGENTS)
 	vec3 n = _stageInputs.worldNormal;

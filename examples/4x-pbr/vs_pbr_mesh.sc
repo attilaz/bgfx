@@ -16,6 +16,10 @@ $output v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_ligh
 #define HAS_SHADOWING
 #define HAS_DIRECTIONAL_LIGHTING
 
+#define MATERIAL_HAS_NORMAL
+#define MATERIAL_HAS_CLEAR_COAT_NORMAL
+#define MATERIAL_HAS_ANISOTROPY
+
 #include "filament.sh"
 
 void main()
