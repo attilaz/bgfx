@@ -19,13 +19,13 @@ namespace
 
 static float s_texelHalf = 0.0f;
 
-struct Uniforms
+struct FrameUniforms
 {
-	enum { NumVec4 = 12 };
+	enum { NumVec4 = 25 };
 
 	void init()
 	{
-		u_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4, NumVec4);
+		u_params = bgfx::createUniform("u_frameUniforms", bgfx::UniformType::Vec4, NumVec4);
 	}
 
 	void submit()
@@ -42,22 +42,21 @@ struct Uniforms
 	{
 		struct
 		{
-			union
-			{
-				  float m_mtx[16];
-			/* 0*/ struct { float m_mtx0[4]; };
-			/* 1*/ struct { float m_mtx1[4]; };
-			/* 2*/ struct { float m_mtx2[4]; };
-			/* 3*/ struct { float m_mtx3[4]; };
-			};
-			/* 4*/ struct { float m_glossiness, m_reflectivity, m_exposure, m_bgType; };
-			/* 5*/ struct { float m_metalOrSpec, m_unused5[3]; };
-			/* 6*/ struct { float m_doDiffuse, m_doSpecular, m_doDiffuseIbl, m_doSpecularIbl; };
-			/* 7*/ struct { float m_cameraPos[3], m_unused7[1]; };
-			/* 8*/ struct { float m_rgbDiff[4]; };
-			/* 9*/ struct { float m_rgbSpec[4]; };
-			/*10*/ struct { float m_lightDir[3], m_unused10[1]; };
-			/*11*/ struct { float m_lightCol[3], m_unused11[1]; };
+				  
+			/* 0-3 */ float m_lightFromWorldMatrix[16]; 
+			/* 4   */ float m_resolution[4];
+			/* 5   */ struct { float m_cameraPosition[3], m_time; };
+			/* 6   */ struct { float m_lightColorIntensity[4]; };
+			/* 7   */ struct { float m_sun[4]; };
+			/* 8   */ struct { float m_lightDirection[3]; float m_fParamsX; };
+			/* 9   */ struct {	float m_shadowBias[3]; float  m_oneOverFroxelDimensionY; };
+			/*10   */ struct { float m_zParams[4]; };
+			/*11   */ struct { float m_fParams[2]; float m_origin[2]; };
+			/*12   */ struct {	float m_oneOverFroxelDimension; float iblLuminance; float m_exposure; float m_ev100; };
+			/*13-21*/ struct { float m_iblSH[9][4]; };
+			/*22   */ struct { float userTime[4]; };
+			/*23   */ struct { float iblMaxMipLevel[2]; float m_padding0[2]; };
+			/*24   */ struct { float worldOffset[3]; float m_padding1; };
 		};
 
 		float m_params[NumVec4*4];
