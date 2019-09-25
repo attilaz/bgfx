@@ -445,7 +445,7 @@ vec4 getLightSpacePosition(const vec3 p, const vec3 n) {
     float NoL = saturate(dot(n, l));
     float sinTheta = sqrt(1.0 - NoL * NoL);
     vec3 offsetPosition = p + n * (sinTheta * u_frameUniforms_shadowBias.y);
-    vec4 lightSpacePosition = (getLightFromWorldMatrix() * vec4(offsetPosition, 1.0));
+    vec4 lightSpacePosition = mul(getLightFromWorldMatrix(),  vec4(offsetPosition, 1.0));
     return lightSpacePosition;
 }
 #endif
@@ -2264,7 +2264,7 @@ void getAnisotropyPixelParams(const MaterialInputs material, inout PixelParams p
 #if defined(MATERIAL_HAS_ANISOTROPY)
     vec3 direction = material.anisotropyDirection;
     pixel.anisotropy = material.anisotropy;
-    pixel.anisotropicT = normalize(shading_tangentToWorld * direction);
+    pixel.anisotropicT = normalize(mul(shading_tangentToWorld, direction));
     pixel.anisotropicB = normalize(cross(getWorldGeometricNormalVector(), pixel.anisotropicT));
 #endif
 }
