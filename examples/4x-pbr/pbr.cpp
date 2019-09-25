@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 Dario Manesku. All rights reserved.
+ * Copyright 2019-2019 Attila Kocsis. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -48,15 +48,15 @@ struct FrameUniforms
 			/* 5   */ struct { float m_cameraPosition[3], m_time; };
 			/* 6   */ struct { float m_lightColorIntensity[4]; };
 			/* 7   */ struct { float m_sun[4]; };
-			/* 8   */ struct { float m_lightDirection[3]; float m_fParamsX; };
-			/* 9   */ struct {	float m_shadowBias[3]; float  m_oneOverFroxelDimensionY; };
+			/* 8   */ struct { float m_lightDirection[3], m_fParamsX; };
+			/* 9   */ struct { float m_shadowBias[3], m_oneOverFroxelDimensionY; };
 			/*10   */ struct { float m_zParams[4]; };
-			/*11   */ struct { float m_fParams[2]; float m_origin[2]; };
-			/*12   */ struct {	float m_oneOverFroxelDimension; float iblLuminance; float m_exposure; float m_ev100; };
+			/*11   */ struct { float m_fParams[2], m_origin[2]; };
+			/*12   */ struct { float m_oneOverFroxelDimension, iblLuminance, m_exposure, m_ev100; };
 			/*13-21*/ struct { float m_iblSH[9][4]; };
 			/*22   */ struct { float userTime[4]; };
-			/*23   */ struct { float iblMaxMipLevel[2]; float m_padding0[2]; };
-			/*24   */ struct { float worldOffset[3]; float m_padding1; };
+			/*23   */ struct { float iblMaxMipLevel[2], m_padding0[2]; };
+			/*24   */ struct { float worldOffset[3], m_padding1; };
 		};
 
 		float m_params[NumVec4*4];
@@ -64,6 +64,75 @@ struct FrameUniforms
 
 	bgfx::UniformHandle u_params;
 };
+	
+	struct ObjectUniforms
+	{
+		enum { NumVec4 = 5 };
+		
+		void init()
+		{
+			u_params = bgfx::createUniform("u_objectUniforms", bgfx::UniformType::Vec4, NumVec4);
+		}
+		
+		void submit()
+		{
+			bgfx::setUniform(u_params, m_params, NumVec4);
+		}
+		
+		void destroy()
+		{
+			bgfx::destroy(u_params);
+		}
+		
+		union
+		{
+			struct
+			{
+				/* 0-2 */ struct { float m_worldFromModelNormalMatrix[3*4]; }
+				/* 3   */ struct { float m_morphWeights[4]; };
+				/* 4   */ struct { float m_skinningEnabled, m_morphingEnabled, m_padding0[2]; };
+			};
+
+			float m_params[NumVec4*4];
+		};
+		
+		bgfx::UniformHandle u_params;
+	};
+
+	struct MaterialUniforms
+	{
+		enum { NumVec4 = 1 };
+		
+		void init()
+		{
+			u_params = bgfx::createUniform("u_materialParams", bgfx::UniformType::Vec4, NumVec4);
+		}
+		
+		void submit()
+		{
+			bgfx::setUniform(u_params, m_params, NumVec4);
+		}
+		
+		void destroy()
+		{
+			bgfx::destroy(u_params);
+		}
+		
+		union
+		{
+			struct
+			{
+				/* 1   */ struct { float m_specularAntiAliasingVariance, m_specularAntiAliasingThreshold, m_maskThreshold, m_doubleSided; };
+			};
+
+			float m_params[NumVec4*4];
+		};
+		
+		bgfx::UniformHandle u_params;
+	};
+
+	
+	
 
 struct PosColorTexCoord0Vertex
 {
@@ -453,8 +522,8 @@ public:
 		s_texCube    = bgfx::createUniform("s_texCube",    bgfx::UniformType::Sampler);
 		s_texCubeIrr = bgfx::createUniform("s_texCubeIrr", bgfx::UniformType::Sampler);
 
-		m_programMesh  = loadProgram("vs_ibl_mesh",   "fs_ibl_mesh");
-		m_programSky   = loadProgram("vs_ibl_skybox", "fs_ibl_skybox");
+		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
+		m_programSky   = loadProgram("vs_pbr_skybox", "fs_pbr_skybox");
 
 		m_meshBunny = meshLoad("meshes/bunny.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
@@ -817,6 +886,12 @@ public:
 	bgfx::UniformHandle u_camPos;
 	bgfx::UniformHandle s_texCube;
 	bgfx::UniformHandle s_texCubeIrr;
+
+	//todo
+	SAMPLER2D(light_iblDFG, 3);
+	SAMPLERCUBE(light_iblSpecular, 4);
+	
+
 
 	bgfx::ProgramHandle m_programMesh;
 	bgfx::ProgramHandle m_programSky;
