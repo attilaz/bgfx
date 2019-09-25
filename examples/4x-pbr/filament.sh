@@ -14,50 +14,35 @@ VERTEX_DOMAIN_VIEW    - attribute 'position' is in view space
 VERTEX_DOMAIN_DEVICE  - attribute 'position' is in device/clip space
 
 // fragment parameters
-TARGET_MOBILE  - higher performance, but less precise shading
-
-	//enable on of these
+	//enable one of these
 SHADING_MODEL_SPECULAR_GLOSSINESS - standard specular glossiness shading
 SHADING_MODEL_CLOTH              - cloth shading
 SHADING_MODEL_SUBSURFACE         - subsurface scattering
 SHADING_MODEL_UNLIT              - unlit
 
 MATERIAL_HAS_SUBSURFACE_COLOR
-MATERIAL_HAS_NORMAL
+MATERIAL_HAS_NORMAL	//vertex/fragment option
 MATERIAL_HAS_CLEAR_COAT
-MATERIAL_HAS_CLEAR_COAT_NORMAL
-MATERIAL_HAS_POST_LIGHTING_COLOR
-MATERIAL_HAS_ANISOTROPY
+MATERIAL_HAS_CLEAR_COAT_NORMAL		//vertex/fragment option
+MATERIAL_HAS_ANISOTROPY			//vertex/fragment option
 MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY
-MATERIAL_CAN_SKIP_LIGHTING
 MATERIAL_HAS_AMBIENT_OCCLUSION
 MATERIAL_HAS_CLEAR_COAT_ROUGHNESS
 MATERIAL_HAS_EMISSIVE
 
-HAS_SHADOWING
+HAS_SHADOWING	//vertex/fragment
 HAS_DIRECTIONAL_LIGHTING
 HAS_DYNAMIC_LIGHTING
 HAS_SHADOW_MULTIPLIER
 
 GEOMETRIC_SPECULAR_AA
-SUN_AS_AREA_LIGHT
-SPECULAR_AMBIENT_OCCLUSION
+SPECULAR_AMBIENT_OCCLUSION	// 0 / 1
 MULTI_BOUNCE_AMBIENT_OCCLUSION
 CLEAR_COAT_IOR_CHANGE
-
-IBL_INTEGRATION
-IBL_INTEGRATION_IMPORTANCE_SAMPLING
-IBL_INTEGRATION_PREFILTERED_CUBEMAP
 
 BLEND_MODE_MASKED
 BLEND_MODE_TRANSPARENT
 BLEND_MODE_FADE
-
-POST_LIGHTING_BLEND_MODE_OPAQUE
-POST_LIGHTING_BLEND_MODE_TRANSPARENT
-POST_LIGHTING_BLEND_MODE_ADD
-POST_LIGHTING_BLEND_MODE_MULTIPLY
-POST_LIGHTING_BLEND_MODE_SCREEN
 */
 
 uniform float4 u_frameUniforms[25];
@@ -491,9 +476,6 @@ struct MaterialInputs {
     vec3  clearCoatNormal;
 #endif
 
-#if defined(MATERIAL_HAS_POST_LIGHTING_COLOR)
-    vec4  postLightingColor;
-#endif
 };
 
 void initMaterial(out MaterialInputs material) {
@@ -546,9 +528,6 @@ void initMaterial(out MaterialInputs material) {
     material.clearCoatNormal = vec3(0.0, 0.0, 1.0);
 #endif
 
-#if defined(MATERIAL_HAS_POST_LIGHTING_COLOR)
-    material.postLightingColor = vec4_splat(0.0);
-#endif
 }
 
 // These variables should be in a struct but some GPU drivers ignore the
@@ -1202,16 +1181,16 @@ vec3 surfaceShading(const PixelParams pixel, const Light light, float occlusion)
     vec3 Fr = (D * V) * F;
 
     // diffuse BRDF
-    float diffuse = diffuse(pixel.roughness, shading_NoV, NoL, LoH);
+    float diffuseColor = diffuse(pixel.roughness, shading_NoV, NoL, LoH);
 #if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
     // Energy conservative wrap diffuse to simulate subsurface scattering
-    diffuse *= Fd_Wrap(dot(shading_normal, light.l), 0.5);
+    diffuseColor *= Fd_Wrap(dot(shading_normal, light.l), 0.5);
 #endif
 
     // We do not multiply the diffuse term by the Fresnel term as discussed in
     // Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886"
     // The effect is fairly subtle and not deemed worth the cost for mobile
-    vec3 Fd = diffuse * pixel.diffuseColor;
+    vec3 Fd = diffuseColor * pixel.diffuseColor;
 
 #if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
     // Cheap subsurface scatter
@@ -1410,6 +1389,48 @@ vec3 surfaceShading(const PixelParams pixel, const Light light, float occlusion)
 }
 
 #endif
+#ifdef SHADING_MODEL_UNLIT
+/**
+ * Evaluates unlit materials. In this lighting model, only the base color and
+ * emissive properties are taken into account:
+ *
+ * finalColor = baseColor + emissive
+ *
+ * The emissive factor is only applied if the fragment passes the optional
+ * alpha test.
+ *
+ * When the shadowMultiplier property is enabled on the material, the final
+ * color is multiplied by the inverse light visibility to apply a shadow.
+ * This is mostly useful in AR to cast shadows on unlit transparent shadow
+ * receiving planes.
+ */
+vec4 evaluateMaterial(const MaterialInputs material) {
+    vec4 color = material.baseColor;
+
+#if defined(BLEND_MODE_MASKED)
+    if (color.a < getMaskThreshold()) {
+        discard;
+    }
+#endif
+
+#if defined(MATERIAL_HAS_EMISSIVE)
+    color.rgb += material.emissive.rgb;
+#endif
+
+#if defined(HAS_DIRECTIONAL_LIGHTING)
+#if defined(HAS_SHADOWING)
+    color *= 1.0 - shadow(light_shadowMap, getLightSpacePosition());
+#else
+    color = vec4_splat(0.0);
+#endif
+#elif defined(HAS_SHADOW_MULTIPLIER)
+    color = vec4_splat(0.0);
+#endif
+
+    return color;
+}
+
+#else
 //------------------------------------------------------------------------------
 // Image based lighting configuration
 //------------------------------------------------------------------------------
@@ -1481,7 +1502,7 @@ vec3 Irradiance_SphericalHarmonics(const vec3 n) {
 // IBL irradiance dispatch
 //------------------------------------------------------------------------------
 
-vec3 computediffuseIrradiance(const vec3 n) {
+vec3 diffuseIrradiance(const vec3 n) {
     return Irradiance_SphericalHarmonics(n);
 }
 
@@ -1736,10 +1757,10 @@ void evaluateClearCoatIBL(const PixelParams pixel, float specularAO, inout vec3 
 #endif
 }
 
-void evaluateSubsurfaceIBL(const PixelParams pixel, const vec3 diffuseIrradiance,
+void evaluateSubsurfaceIBL(const PixelParams pixel, const vec3 diffuseIrradianceColor,
         inout vec3 Fd, inout vec3 Fr) {
 #if defined(SHADING_MODEL_SUBSURFACE)
-    vec3 viewIndependent = diffuseIrradiance;
+    vec3 viewIndependent = diffuseIrradianceColor;
     vec3 viewDependent = prefilteredRadiance(-shading_view, pixel.roughness, 1.0 + pixel.thickness);
     float attenuation = (1.0 - pixel.thickness) / (2.0 * PI);
     Fd += pixel.subsurfaceColor * (viewIndependent + viewDependent) * attenuation;
@@ -1772,14 +1793,14 @@ void evaluateIBL(const MaterialInputs material, const PixelParams pixel, inout v
     float diffuseBRDF = singleBounceAO(diffuseAO); // Fd_Lambert() is baked in the SH below
     evaluateClothIndirectDiffuseBRDF(pixel, diffuseBRDF);
 
-    vec3 diffuseIrradiance = computediffuseIrradiance(n);
-    vec3 Fd = pixel.diffuseColor * diffuseIrradiance * (1.0 - E) * diffuseBRDF;
+    vec3 diffuseIrradianceColor = diffuseIrradiance(n);
+    vec3 Fd = pixel.diffuseColor * diffuseIrradianceColor * (1.0 - E) * diffuseBRDF;
 
     // clear coat layer
     evaluateClearCoatIBL(pixel, specularAO, Fd, Fr);
 
     // subsurface layer
-    evaluateSubsurfaceIBL(pixel, diffuseIrradiance, Fd, Fr);
+    evaluateSubsurfaceIBL(pixel, diffuseIrradianceColor, Fd, Fr);
 
     // extra ambient occlusion term
     multiBounceAO(diffuseAO, pixel.diffuseColor, Fd);
@@ -2058,48 +2079,6 @@ void evaluateDirectionalLight(const MaterialInputs material,
     color.rgb += surfaceShading(pixel, light, visibility);
 }
 
-#ifdef SHADING_MODEL_UNLIT
-/**
- * Evaluates unlit materials. In this lighting model, only the base color and
- * emissive properties are taken into account:
- *
- * finalColor = baseColor + emissive
- *
- * The emissive factor is only applied if the fragment passes the optional
- * alpha test.
- *
- * When the shadowMultiplier property is enabled on the material, the final
- * color is multiplied by the inverse light visibility to apply a shadow.
- * This is mostly useful in AR to cast shadows on unlit transparent shadow
- * receiving planes.
- */
-vec4 evaluateMaterial(const MaterialInputs material) {
-    vec4 color = material.baseColor;
-
-#if defined(BLEND_MODE_MASKED)
-    if (color.a < getMaskThreshold()) {
-        discard;
-    }
-#endif
-
-#if defined(MATERIAL_HAS_EMISSIVE)
-    color.rgb += material.emissive.rgb;
-#endif
-
-#if defined(HAS_DIRECTIONAL_LIGHTING)
-#if defined(HAS_SHADOWING)
-    color *= 1.0 - shadow(light_shadowMap, getLightSpacePosition());
-#else
-    color = vec4_splat(0.0);
-#endif
-#elif defined(HAS_SHADOW_MULTIPLIER)
-    color = vec4_splat(0.0);
-#endif
-
-    return color;
-}
-
-#else
 //------------------------------------------------------------------------------
 // Lighting
 //------------------------------------------------------------------------------
@@ -2353,24 +2332,6 @@ vec4 evaluateMaterial(const MaterialInputs material) {
 }
 
 #endif
-#if defined(MATERIAL_HAS_POST_LIGHTING_COLOR)
-void blendPostLightingColor(const MaterialInputs material, inout vec4 color) {
-#if defined(POST_LIGHTING_BLEND_MODE_OPAQUE)
-    color = material.postLightingColor;
-#elif defined(POST_LIGHTING_BLEND_MODE_TRANSPARENT)
-    color = material.postLightingColor + color * (1.0 - material.postLightingColor.a);
-#elif defined(POST_LIGHTING_BLEND_MODE_ADD)
-    color += material.postLightingColor;
-#elif defined(POST_LIGHTING_BLEND_MODE_MULTIPLY)
-    color *= material.postLightingColor;
-#elif defined(POST_LIGHTING_BLEND_MODE_SCREEN)
-    color += material.postLightingColor * (1.0 - color);
-#endif
-}
-#endif
-
-
-
 #endif //BGFX_SHADER_TYPE_FRAGMENT
 #if BGFX_SHADER_TYPE_VERTEX
 
@@ -2445,20 +2406,20 @@ void evaluate(out VertexOutput _output, in VertexAttributes _attributes)
 
         #if defined(HAS_SKINNING_OR_MORPHING)
 
-            if (objectUniforms.morphingEnabled == 1) {
+            if (u_objectUniforms_morphingEnabled == 1) {
                 vec3 normal0, normal1, normal2, normal3;
                 toTangentFrame(mesh_morph_tangents0, normal0);
                 toTangentFrame(mesh_morph_tangents1, normal1);
                 toTangentFrame(mesh_morph_tangents2, normal2);
                 toTangentFrame(mesh_morph_tangents3, normal3);
-                _output.worldNormal += objectUniforms.morphWeights.x * normal0;
-                _output.worldNormal += objectUniforms.morphWeights.y * normal1;
-                _output.worldNormal += objectUniforms.morphWeights.z * normal2;
-                _output.worldNormal += objectUniforms.morphWeights.w * normal3;
+                _output.worldNormal += u_objectUniforms_morphWeights.x * normal0;
+                _output.worldNormal += u_objectUniforms_morphWeights.y * normal1;
+                _output.worldNormal += u_objectUniforms_morphWeights.z * normal2;
+                _output.worldNormal += u_objectUniforms_morphWeights.w * normal3;
                 _output.worldNormal = normalize(_output.worldNormal);
             }
 
-            if (objectUniforms.skinningEnabled == 1) {
+            if (u_objectUniforms_skinningEnabled == 1) {
                 skinNormal(_output.worldNormal, mesh_bone_indices, mesh_bone_weights);
                 skinNormal(_output.worldTangent, mesh_bone_indices, mesh_bone_weights);
             }
@@ -2469,8 +2430,8 @@ void evaluate(out VertexOutput _output, in VertexAttributes _attributes)
         // because we ensure the worldFromModelNormalMatrix pre-scales the normal such that
         // all its components are < 1.0. This precents the bitangent to exceed the range of fp16
         // in the fragment shader, where we renormalize after interpolation
-        _output.worldTangent = objectUniforms.worldFromModelNormalMatrix * _output.worldTangent;
-        _output.worldNormal = objectUniforms.worldFromModelNormalMatrix * _output.worldNormal;
+        _output.worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, _output.worldTangent);
+        _output.worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, _output.worldNormal);
 
         // Reconstruct the bitangent from the normal and tangent. We don't bother with
         // normalization here since we'll do it after interpolation in the fragment stage
@@ -2478,10 +2439,10 @@ void evaluate(out VertexOutput _output, in VertexAttributes _attributes)
                 cross(_output.worldNormal, _output.worldTangent) * sign(mesh_tangents.w);
     #else // MATERIAL_HAS_ANISOTROPY || MATERIAL_HAS_NORMAL
         // Without anisotropy or normal mapping we only need the normal vector
-        toTangentFrame(mesh_tangents, material.worldNormal);
-        _output.worldNormal = objectUniforms.worldFromModelNormalMatrix * material.worldNormal;
+        toTangentFrame(mesh_tangents, _output.worldNormal);
+        _output.worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, _output.worldNormal);
         #if defined(HAS_SKINNING_OR_MORPHING)
-            if (objectUniforms.skinningEnabled == 1) {
+            if (u_objectUniforms_skinningEnabled == 1) {
                 skinNormal(_output.worldNormal, mesh_bone_indices, mesh_bone_weights);
             }
         #endif
@@ -2553,10 +2514,6 @@ vec4 evaluate(const MaterialInputs _inputs, FragmentStageInputs _stageInputs)
 	prepareMaterial(_inputs);
 
 	vec4 fragColor = evaluateMaterial(_inputs);
-
-#if defined(MATERIAL_HAS_POST_LIGHTING_COLOR)
-    blendPostLightingColor(inputs, fragColor);
-#endif
 
 	return fragColor;
 }
