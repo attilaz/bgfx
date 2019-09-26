@@ -65,73 +65,112 @@ struct FrameUniforms
 	bgfx::UniformHandle u_params;
 };
 	
-	struct ObjectUniforms
+struct ObjectUniforms
+{
+	enum { NumVec4 = 5 };
+		
+	void init()
 	{
-		enum { NumVec4 = 5 };
+		u_params = bgfx::createUniform("u_objectUniforms", bgfx::UniformType::Vec4, NumVec4);
+	}
 		
-		void init()
-		{
-			u_params = bgfx::createUniform("u_objectUniforms", bgfx::UniformType::Vec4, NumVec4);
-		}
+	void submit()
+	{
+		bgfx::setUniform(u_params, m_params, NumVec4);
+	}
 		
-		void submit()
-		{
-			bgfx::setUniform(u_params, m_params, NumVec4);
-		}
+	void destroy()
+	{
+		bgfx::destroy(u_params);
+	}
 		
-		void destroy()
+	union
+	{
+		struct
 		{
-			bgfx::destroy(u_params);
-		}
-		
-		union
-		{
-			struct
-			{
-				/* 0-2 */ struct { float m_worldFromModelNormalMatrix[3*4]; }
-				/* 3   */ struct { float m_morphWeights[4]; };
-				/* 4   */ struct { float m_skinningEnabled, m_morphingEnabled, m_padding0[2]; };
-			};
-
-			float m_params[NumVec4*4];
+			/* 0-2 */ struct { float m_worldFromModelNormalMatrix[3*4]; }
+			/* 3   */ struct { float m_morphWeights[4]; };
+			/* 4   */ struct { float m_skinningEnabled, m_morphingEnabled, m_padding0[2]; };
 		};
+
+		float m_params[NumVec4*4];
+	};
 		
-		bgfx::UniformHandle u_params;
+	bgfx::UniformHandle u_params;
+};
+
+struct MaterialUniforms
+{
+	enum { NumVec4 = 1 };
+		
+	void init()
+	{
+		u_params = bgfx::createUniform("u_materialUniforms", bgfx::UniformType::Vec4, NumVec4);
+	}
+		
+	void submit()
+	{
+		bgfx::setUniform(u_params, m_params, NumVec4);
+	}
+		
+	void destroy()
+	{
+		bgfx::destroy(u_params);
+	}
+		
+	union
+	{
+		struct
+		{
+			/* 0 */ struct { float m_specularAntiAliasingVariance, m_specularAntiAliasingThreshold, m_maskThreshold, m_doubleSided; };
+		};
+
+		float m_params[NumVec4*4];
+	};
+		
+	bgfx::UniformHandle u_params;
+};
+
+struct MaterialInput
+{
+	enum { NumVec4 = 10 };
+
+	void init()
+	{
+		u_params = bgfx::createUniform("u_materialInput", bgfx::UniformType::Vec4, NumVec4);
+	}
+
+	void submit()
+	{
+		bgfx::setUniform(u_params, m_params, NumVec4);
+	}
+
+	void destroy()
+	{
+		bgfx::destroy(u_params);
+	}
+
+	union
+	{
+		struct
+		{
+			/* 0 */ struct { float m_baseColor[4]; };
+			/* 1 */ struct { float m_roughness, m_metallic, m_reflectance, m_ambientOcclusion; };
+			/* 2 */ struct { float m_emissive[4]; };
+			/* 3 */ struct { float m_clearCoat, m_clearCoatRoughness, m_anisotropy, m_unused0; };
+			/* 4 */ struct { float m_anisotropyDirection[3], m_thickness; };
+			/* 5 */ struct { float m_subsurfaceColor[3], m_subsurfacePower; };
+			/* 6 */ struct { float m_sheenColor[3], m_unused1; };
+			/* 7 */ struct { float m_specularColor[3], m_glossiness; };
+			/* 8 */ struct { float m_normal[3], m_unused2; };
+			/* 9 */ struct { float m_clearCoatNormalr[3], m_unused3; };
+		};
+
+		float m_params[NumVec4 * 4];
 	};
 
-	struct MaterialUniforms
-	{
-		enum { NumVec4 = 1 };
-		
-		void init()
-		{
-			u_params = bgfx::createUniform("u_materialParams", bgfx::UniformType::Vec4, NumVec4);
-		}
-		
-		void submit()
-		{
-			bgfx::setUniform(u_params, m_params, NumVec4);
-		}
-		
-		void destroy()
-		{
-			bgfx::destroy(u_params);
-		}
-		
-		union
-		{
-			struct
-			{
-				/* 1   */ struct { float m_specularAntiAliasingVariance, m_specularAntiAliasingThreshold, m_maskThreshold, m_doubleSided; };
-			};
-
-			float m_params[NumVec4*4];
-		};
-		
-		bgfx::UniformHandle u_params;
-	};
-
-	
+	bgfx::UniformHandle u_params;
+};
 	
 
 struct PosColorTexCoord0Vertex
