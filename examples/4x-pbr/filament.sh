@@ -83,9 +83,9 @@ mediump float4 u_bones[CONFIG_MAX_BONE_COUNT*4];
 uniform float4 u_objectUniforms[5];
 #define u_objectUniforms_worldFromModelNormalMatrix mat3(u_objectUniforms[0].xyz,u_objectUniforms[1].xyz,u_objectUniforms[2].xyz)
 #define u_objectUniforms_morphWeights u_objectUniforms[3]
-#define u_objectUniforms_skinningEnabled int(u_objectUniforms[3].x)
-#define u_objectUniforms_morphingEnabled int(u_objectUniforms[3].y)
-#define u_objectUniforms_padding0 u_objectUniforms[3].zw
+#define u_objectUniforms_skinningEnabled int(u_objectUniforms[4].x)
+#define u_objectUniforms_morphingEnabled int(u_objectUniforms[4].y)
+#define u_objectUniforms_padding0 u_objectUniforms[4].zw
 
 #endif
 
