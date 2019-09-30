@@ -2,7 +2,7 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 
 #include "../common/common.sh"
 
-uniform vec4 u_materialInput[10]
+uniform vec4 u_materialInput[10];
 
 #define u_materialInput_baseColor u_materialInput[0]
 #define u_materialInput_roughness u_materialInput[1].x

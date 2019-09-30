@@ -497,7 +497,7 @@ public:
 		s_texCubeIrr = bgfx::createUniform("s_texCubeIrr", bgfx::UniformType::Sampler);
 
 		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
-		m_programSky   = loadProgram("vs_pbr_skybox", "fs_pbr_skybox");
+		m_programSky   = loadProgram("vs_ibl_skybox", "fs_ibl_skybox");
 
 		m_meshBunny = meshLoad("meshes/bunny.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
@@ -701,6 +701,7 @@ public:
 
 			imguiEndFrame();
 
+#if 0
 			m_uniforms.m_glossiness   = m_settings.m_glossiness;
 			m_uniforms.m_reflectivity = m_settings.m_reflectivity;
 			m_uniforms.m_exposure     = m_settings.m_exposure;
@@ -714,7 +715,8 @@ public:
 			bx::memCopy(m_uniforms.m_rgbSpec,  m_settings.m_rgbSpec,  3*sizeof(float) );
 			bx::memCopy(m_uniforms.m_lightDir, m_settings.m_lightDir, 3*sizeof(float) );
 			bx::memCopy(m_uniforms.m_lightCol, m_settings.m_lightCol, 3*sizeof(float) );
-
+#endif
+			
 			int64_t now = bx::getHPCounter();
 			static int64_t last = now;
 			const int64_t frameTime = now - last;
@@ -745,7 +747,9 @@ public:
 				}
 			}
 			m_camera.update(deltaTimeSec);
+#if 0
 			bx::memCopy(m_uniforms.m_cameraPos, &m_camera.m_pos.curr.x, 3*sizeof(float) );
+#endif
 
 			// View Transform 0.
 			float view[16];
@@ -775,7 +779,9 @@ public:
 			m_camera.envViewMtx(mtxEnvView);
 			float mtxEnvRot[16];
 			bx::mtxRotateY(mtxEnvRot, m_settings.m_envRotCurr);
+#if 0
 			bx::mtxMul(m_uniforms.m_mtx, mtxEnvView, mtxEnvRot); // Used for Skybox.
+#endif
 
 			// Submit view 0.
 			bgfx::setTexture(0, s_texCube, m_lightProbes[m_currentLightProbe].m_tex);
@@ -786,7 +792,9 @@ public:
 			bgfx::submit(0, m_programSky);
 
 			// Submit view 1.
+#if 0
 			bx::memCopy(m_uniforms.m_mtx, mtxEnvRot, 16*sizeof(float)); // Used for IBL.
+#endif
 			if (0 == m_settings.m_meshSelection)
 			{
 				// Submit bunny.
@@ -821,9 +829,11 @@ public:
 							, 0.0f
 							);
 
+#if 0
 						m_uniforms.m_glossiness   =        xx*(1.0f/xend);
 						m_uniforms.m_reflectivity = (yend-yy)*(1.0f/yend);
 						m_uniforms.m_metalOrSpec = 0.0f;
+#endif
 						m_uniforms.submit();
 
 						bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);

@@ -74,18 +74,22 @@ uniform float4 u_frameUniforms[25];
 #define u_frameUniforms_worldOffset u_frameUniforms[24].xyz
 #define u_frameUniforms_padding1 u_frameUniforms[24].w
 
-#if BGFX_SHADER_TYPE_VERTEX
 
-#define CONFIG_MAX_BONE_COUNT (256)
-mediump float4 u_bones[CONFIG_MAX_BONE_COUNT*4];
-
-
-uniform float4 u_objectUniforms[5];
+uniform float4 u_objectUniforms[6];
 #define u_objectUniforms_worldFromModelNormalMatrix mat3(u_objectUniforms[0].xyz,u_objectUniforms[1].xyz,u_objectUniforms[2].xyz)
 #define u_objectUniforms_morphWeights u_objectUniforms[3]
 #define u_objectUniforms_skinningEnabled int(u_objectUniforms[4].x)
 #define u_objectUniforms_morphingEnabled int(u_objectUniforms[4].y)
 #define u_objectUniforms_padding0 u_objectUniforms[4].zw
+#define u_objectUniforms_specularAntiAliasingVariance u_objectUniforms[5].x
+#define u_objectUniforms_specularAntiAliasingThreshold u_objectUniforms[5].y
+#define u_objectUniforms_maskThreshold u_objectUniforms[5].z
+#define u_objectUniforms_doubleSided (0.0 != u_objectUniforms[5].w)
+
+#if BGFX_SHADER_TYPE_VERTEX
+
+#define CONFIG_MAX_BONE_COUNT (256)
+mediump float4 u_bones[CONFIG_MAX_BONE_COUNT*4];
 
 #endif
 
@@ -94,13 +98,7 @@ uniform float4 u_objectUniforms[5];
 #define CONFIG_MAX_LIGHT_COUNT (256)
 uniform highp float4 u_lights[CONFIG_MAX_LIGHT_COUNT*4];
 
-uniform float4 u_materialUniforms[1];
-#define u_materialUniforms_specularAntiAliasingVariance u_materialUniforms[0].x
-#define u_materialUniforms_specularAntiAliasingThreshold u_materialUniforms[0].y
-#define u_materialUniforms_maskThreshold u_materialUniforms[0].z
-#define u_materialUniforms_doubleSided (0.0 != u_materialUniforms[0].w)
-
-SAMPLER2DSHADOW(light_shadowMap, 0); 
+SAMPLER2DSHADOW(light_shadowMap, 0);
 ISAMPLER2D(light_records, 1); 
 ISAMPLER2D(light_froxels, 2); 
 SAMPLER2D(light_iblDFG, 3); 
@@ -578,7 +576,7 @@ static highp vec3  shading_position;         // position of the fragment in worl
 #if defined(BLEND_MODE_MASKED)
 /** @public-api */
 float getMaskThreshold() {
-    return u_materialUniforms_maskThreshold;
+    return u_objectUniforms_maskThreshold;
 }
 #endif
 
@@ -640,7 +638,7 @@ highp vec3 getLightSpacePosition() {
 
 #if defined(MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY)
 bool isDoubleSided() {
-    return u_materialUniforms_doubleSided;
+    return u_objectUniforms_doubleSided;
 }
 #endif
 
@@ -2155,10 +2153,10 @@ float normalFiltering(float perceptualRoughness, const vec3 worldNormal) {
     vec3 du = dFdx(worldNormal);
     vec3 dv = dFdy(worldNormal);
 
-    float variance = u_materialUniforms_specularAntiAliasingVariance * (dot(du, du) + dot(dv, dv));
+    float variance = u_objectUniforms_specularAntiAliasingVariance * (dot(du, du) + dot(dv, dv));
 
     float roughness = perceptualRoughnessToRoughness(perceptualRoughness);
-    float kernelRoughness = min(2.0 * variance, u_materialUniforms_specularAntiAliasingThreshold);
+    float kernelRoughness = min(2.0 * variance, u_objectUniforms_specularAntiAliasingThreshold);
     float squareRoughness = saturate(roughness * roughness + kernelRoughness);
 
     return roughnessToPerceptualRoughness(sqrt(squareRoughness));
