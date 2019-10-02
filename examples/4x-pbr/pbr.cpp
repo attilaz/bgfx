@@ -23,7 +23,7 @@ struct Uniforms
 {
 	enum { FrameNumVec4 = 25 };
 	enum { ObjectNumVec4 = 6 };
-	enum { MaterialNumVec4 = 10 };
+	enum { MaterialNumVec4 = 8 };
 
 	void init()
 	{
@@ -87,15 +87,13 @@ struct Uniforms
 		struct
 		{
 			/* 0 */ struct { float m_baseColor[4]; };
-			/* 1 */ struct { float m_roughness, m_metallic, m_reflectance, m_ambientOcclusion; };
+			/* 1 */ struct { float m_roughness, m_metallic, m_reflectance, m_unused4; };
 			/* 2 */ struct { float m_emissive[4]; };
 			/* 3 */ struct { float m_clearCoat, m_clearCoatRoughness, m_anisotropy, m_unused3; };
 			/* 4 */ struct { float m_anisotropyDirection[3], m_thickness; };
 			/* 5 */ struct { float m_subsurfaceColor[3], m_subsurfacePower; };
-			/* 6 */ struct { float m_sheenColor[3], m_unused4; };
+			/* 6 */ struct { float m_sheenColor[3], m_unused5; };
 			/* 7 */ struct { float m_specularColor[3], m_glossiness; };
-			/* 8 */ struct { float m_normal[3], m_unused5; };
-			/* 9 */ struct { float m_clearCoatNormalr[3], m_unused6; };
 		};
 		
 		float m_customParams[MaterialNumVec4 * 4];

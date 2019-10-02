@@ -2,13 +2,12 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 
 #include "../common/common.sh"
 
-uniform vec4 u_materialInput[10];
+uniform vec4 u_materialInput[8];
 
 #define u_materialInput_baseColor u_materialInput[0]
 #define u_materialInput_roughness u_materialInput[1].x
 #define u_materialInput_metallic u_materialInput[1].y
 #define u_materialInput_reflectance u_materialInput[1].z
-#define u_materialInput_ambientOcclusion u_materialInput[1].w
 #define u_materialInput_emissive u_materialInput[2]
 #define u_materialInput_clearCoat u_materialInput[3].x
 #define u_materialInput_clearCoatRoughness u_materialInput[3].y
@@ -20,8 +19,6 @@ uniform vec4 u_materialInput[10];
 #define u_materialInput_sheenColor u_materialInput[6].xyz
 #define u_materialInput_specularColor u_materialInput[7].xyz
 #define u_materialInput_glossiness u_materialInput[7].w
-#define u_materialInput_normal u_materialInput[8].xyz
-#define u_materialInput_clearCoatNormal u_materialInput[9].xyz
 
 //#define SHADING_MODEL_SPECULAR_GLOSSINESS
 //#define SHADING_MODEL_CLOTH
