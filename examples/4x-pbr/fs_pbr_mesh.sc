@@ -64,13 +64,50 @@ void main() {
 	stageIn.fragCoord = gl_FragCoord;
 	stageIn.frontFacing = gl_FrontFacing;
 
-	// Initialize the inputs to sensible default values, see material_inputs.fs
-	MaterialInputs materialIn;
-	initMaterial(materialIn);
+	MaterialInputs material;
+	initMaterial(material);
 
-	// todo: modify material inputs here
+	material.baseColor = u_materialInput_baseColor;
+#if !defined(SHADING_MODEL_UNLIT)
+#if !defined(SHADING_MODEL_SPECULAR_GLOSSINESS)
+	material.roughness = u_materialInput_roughness;
+#endif
+#if !defined(SHADING_MODEL_CLOTH) && !defined(SHADING_MODEL_SPECULAR_GLOSSINESS)
+	material.metallic = u_materialInput_metallic;
+	material.reflectance = u_materialInput_reflectance;
+#endif
+	material.ambientOcclusion = 0.0;
+#endif
+	material.emissive = u_materialInput_emissive;
+	material.clearCoat = u_materialInput_clearCoat;
+	material.clearCoatRoughness = u_materialInput_clearCoatRoughness;
+	material.anisotropy = u_materialInput_anisotropy;
+	material.anisotropyDirection = u_materialInput_anisotropyDirection;
+#if defined(SHADING_MODEL_SUBSURFACE)
+	material.thickness = u_materialInput_thickness;
+	material.subsurfaceColor = u_materialInput_subsurfaceColor;
+	material.subsurfacePower = u_materialInput_subsurfacePower;
+#endif
+#if defined(SHADING_MODEL_CLOTH)
+	material.sheenColor = u_materialInput_sheenColor;
+#if defined(MATERIAL_HAS_SUBSURFACE_COLOR)
+	material.subsurfaceColor = u_materialInput_subsurfaceColor;
+#endif
+#endif
 
-	gl_FragColor = evaluate(materialIn, stageIn);
+#if defined(SHADING_MODEL_SPECULAR_GLOSSINESS)
+	material.specularColor = u_materialInput_specularColor;
+	material.glossiness = u_materialInput_glossiness;
+#endif
+
+#if defined(MATERIAL_HAS_NORMAL)
+	material.normal = vec3(0.0,0.0,1.0);
+#endif
+#if defined(MATERIAL_HAS_CLEAR_COAT) && defined(MATERIAL_HAS_CLEAR_COAT_NORMAL)
+	material.clearCoatNormal = vec3(0.0,0.0,1.0);
+#endif
+
+	gl_FragColor = evaluate(material, stageIn);
 }
 
 #if 0
