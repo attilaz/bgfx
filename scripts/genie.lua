@@ -361,6 +361,15 @@ function exampleProjectDefaults()
 			path.join(BGFX_DIR, "examples/runtime/tvOS-Info.plist"),
 		}
 
+	configuration { "xcode*" }
+		files {
+			path.join(BGFX_DIR, "examples/runtime/font"),
+			path.join(BGFX_DIR, "examples/runtime/images"),
+			path.join(BGFX_DIR, "examples/runtime/meshes" ),
+			path.join(BGFX_DIR, "examples/runtime/shaders"),
+			path.join(BGFX_DIR, "examples/runtime/text"),
+			path.join(BGFX_DIR, "examples/runtime/textures"),
+		}
 
 	configuration { "qnx*" }
 		targetextension ""
@@ -370,6 +379,18 @@ function exampleProjectDefaults()
 		}
 
 	configuration {}
+
+	xcodecopyresources {
+		{ ".", {
+			path.join(BGFX_DIR, "examples/runtime/font"),
+			path.join(BGFX_DIR, "examples/runtime/images"),
+			path.join(BGFX_DIR, "examples/runtime/meshes" ),
+			path.join(BGFX_DIR, "examples/runtime/shaders"),
+			path.join(BGFX_DIR, "examples/runtime/text"),
+			path.join(BGFX_DIR, "examples/runtime/textures"),
+			}
+		}
+	}
 
 	strip()
 end
