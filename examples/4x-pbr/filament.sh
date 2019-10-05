@@ -48,40 +48,25 @@ BLEND_MODE_FADE
 
 */
 
-uniform float4 u_frameUniforms[25];
-
-// todo: use
-// - `u_viewRect vec4(x, y, width, height)` - view rectangle for current view, in pixels.
-// - `u_viewTexel vec4(1.0/width, 1.0/height, undef, undef)` - inverse width and height
-// instead of u_frameUniforms_resolution and u_frameUniforms_origin
-
-// todo: remove u_frameUniforms_time and u_frameUniforms_userTime and related functions
-// todo: remove u_frameUniforms_worldOffset and related functions
+uniform float4 u_frameUniforms[21];
 
 
 #define u_frameUniforms_lightFromWorldMatrix mat4(u_frameUniforms[0],u_frameUniforms[1],u_frameUniforms[2],u_frameUniforms[3])	//directional light shadow
-#define u_frameUniforms_resolution  u_frameUniforms[4]	// width, height, 1 / width, 1 / height
-#define u_frameUniforms_cameraPosition  u_frameUniforms[5].xyz
-#define u_frameUniforms_time            u_frameUniforms[5].w
-#define u_frameUniforms_lightColorIntensity u_frameUniforms[6]	// xyz - directional light color, .w - light intensity premultiplied with exposure
-#define u_frameUniforms_sun u_frameUniforms[7]	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
-#define u_frameUniforms_lightDirection u_frameUniforms[8].xyz // directional light direction
-#define u_frameUniforms_fParamsX uint(u_frameUniforms[8].w) // froxelCoordScale X
-#define u_frameUniforms_shadowBias u_frameUniforms[9].xyz // 0, normalBias * texelSizeWorldSpace, 0
-#define u_frameUniforms_oneOverFroxelDimensionY uint(u_frameUniforms[9].w)  // 1.0 / FroxelDimY
-#define u_frameUniforms_zParams u_frameUniforms[10]   // needed by froxel Z coord computation
-#define u_frameUniforms_fParams uint2(u_frameUniforms[11].xy)   // froxelCoordScale YZ
-#define u_frameUniforms_origin u_frameUniforms[11].zw  // viewport.xy - This could use
-#define u_frameUniforms_oneOverFroxelDimension u_frameUniforms[12].x   // 1.0 / FroxelDimX
-#define u_frameUniforms_iblLuminance u_frameUniforms[12].y
-#define u_frameUniforms_exposure u_frameUniforms[12].z
-#define u_frameUniforms_ev100 u_frameUniforms[12].w
-#define u_frameUniforms_iblSH(_index) u_frameUniforms[13+_index].xyz
-#define u_frameUniforms_userTime u_frameUniforms[22]
-#define u_frameUniforms_iblMaxMipLevel u_frameUniforms[23].xy
-#define u_frameUniforms_padding0 u_frameUniforms[23].zw
-#define u_frameUniforms_worldOffset u_frameUniforms[24].xyz
-#define u_frameUniforms_padding1 u_frameUniforms[24].w
+#define u_frameUniforms_cameraPosition  u_frameUniforms[4].xyz
+#define u_frameUniforms_lightColorIntensity u_frameUniforms[5]	// xyz - directional light color, .w - light intensity premultiplied with exposure
+#define u_frameUniforms_sun u_frameUniforms[6]	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
+#define u_frameUniforms_lightDirection u_frameUniforms[7].xyz // directional light direction
+#define u_frameUniforms_fParamsX uint(u_frameUniforms[7].w) // froxelCoordScale X
+#define u_frameUniforms_shadowBias u_frameUniforms[8].xyz // 0, normalBias * texelSizeWorldSpace, 0
+#define u_frameUniforms_oneOverFroxelDimensionY uint(u_frameUniforms[8].w)  // 1.0 / FroxelDimY
+#define u_frameUniforms_zParams u_frameUniforms[9]   // needed by froxel Z coord computation
+#define u_frameUniforms_oneOverFroxelDimension u_frameUniforms[10].x   // 1.0 / FroxelDimX
+#define u_frameUniforms_iblLuminance u_frameUniforms[10].y
+#define u_frameUniforms_exposure u_frameUniforms[10].z
+#define u_frameUniforms_ev100 u_frameUniforms[10].w
+#define u_frameUniforms_iblSH(_index) u_frameUniforms[11+_index].xyz
+#define u_frameUniforms_iblMaxMipLevel u_frameUniforms[20].xy
+#define u_frameUniforms_fParams uint2(u_frameUniforms[20].xy)   // froxelCoordScale YZ
 
 
 uniform float4 u_objectUniforms[6];
@@ -107,12 +92,12 @@ mediump float4 u_bones[CONFIG_MAX_BONE_COUNT*4];
 #define CONFIG_MAX_LIGHT_COUNT (256)
 uniform highp float4 u_lights[CONFIG_MAX_LIGHT_COUNT*4];
 
-SAMPLER2DSHADOW(light_shadowMap, 0);
-ISAMPLER2D(light_records, 1); 
-ISAMPLER2D(light_froxels, 2); 
-SAMPLER2D(light_iblDFG, 3); 
-SAMPLERCUBE(light_iblSpecular, 4); 
-SAMPLER2D(light_ssao, 5);
+SAMPLER2DSHADOW(s_texShadowMap, 0);
+ISAMPLER2D(s_texLightRecords, 1);
+ISAMPLER2D(s_texLightFroxels, 2);
+SAMPLER2D(s_texIblDFG, 3);
+SAMPLERCUBE(s_texIblSpecular, 4);
+SAMPLER2D(s_texSsao, 5);
 
 static highp vec4 s_FragCoord;
 #if defined(HAS_SHADOWING) && defined(HAS_DIRECTIONAL_LIGHTING)
@@ -280,18 +265,8 @@ mat4 getWorldFromClipMatrix() {
 }
 
 /** @public-api */
-vec4 getResolution() {
-    return u_frameUniforms_resolution;
-}
-
-/** @public-api */
 vec3 getWorldCameraPosition() {
     return u_frameUniforms_cameraPosition;
-}
-
-/** @public-api */
-highp vec3 getWorldOffset() {
-    return u_frameUniforms_worldOffset;
 }
 
 /** @public-api */
@@ -850,8 +825,8 @@ vec3 heatmap(float v) {
 
 float evaluateSSAO() {
     // TODO: Don't use gl_FragCoord.xy, use the view bounds
-    vec2 uv = s_FragCoord.xy * u_frameUniforms_resolution.zw;
-    return texture2DBias(light_ssao, uv, 0.0).r;
+    vec2 uv = s_FragCoord.xy * u_viewTexel.xy;
+    return texture2DBias(s_texSsao, uv, 0.0).r;
 }
 
 /**
@@ -1420,7 +1395,7 @@ vec4 evaluateMaterial(const MaterialInputs material) {
 
 #if defined(HAS_DIRECTIONAL_LIGHTING)
 #if defined(HAS_SHADOWING)
-    color *= 1.0 - shadow2D(light_shadowMap, getLightSpacePosition());
+    color *= 1.0 - shadow2D(s_texShadowMap, getLightSpacePosition());
 #else
     color = vec4_splat(0.0);
 #endif
@@ -1465,7 +1440,7 @@ vec3 decodeDataForIBL(const vec4 data) {
 
 vec3 PrefilteredDFG_LUT(float lod, float NoV) {
     // coord = sqrt(linear_roughness), which is the mapping used by cmgen.
-    return texture2DLod(light_iblDFG, vec2(NoV, lod), 0.0).rgb;
+    return texture2DLod(s_texIblDFG, vec2(NoV, lod), 0.0).rgb;
 }
 
 //------------------------------------------------------------------------------
@@ -1516,12 +1491,12 @@ vec3 prefilteredRadiance(const vec3 r, float perceptualRoughness) {
     // where roughness = perceptualRoughness^2
     // using all the mip levels requires seamless cubemap sampling
     float lod = u_frameUniforms_iblMaxMipLevel.x * perceptualRoughness;
-    return decodeDataForIBL(textureCubeLod(light_iblSpecular, r, lod));
+    return decodeDataForIBL(textureCubeLod(s_texIblSpecular, r, lod));
 }
 
 vec3 prefilteredRadiance(const vec3 r, float roughness, float offset) {
     float lod = u_frameUniforms_iblMaxMipLevel.x * roughness;
-    return decodeDataForIBL(textureCubeLod(light_iblSpecular, r, lod + offset));
+    return decodeDataForIBL(textureCubeLod(s_texIblSpecular, r, lod + offset));
 }
 
 vec3 getSpecularDominantDirection(const vec3 n, const vec3 r, float roughness) {
@@ -1679,7 +1654,7 @@ vec3 isEvaluateIBL(const PixelParams pixel, vec3 n, vec3 v, float NoV) {
             float mipLevel = prefilteredImportanceSampling(ipdf, iblMaxMipLevel);
 
             // we use texture() instead of textureLod() to take advantage of mipmapping
-            vec3 L = decodeDataForIBL(textureCubeBias(light_iblSpecular, l, mipLevel));
+            vec3 L = decodeDataForIBL(textureCubeBias(s_texIblSpecular, l, mipLevel));
 
             float D = distribution(roughness, NoH, h);
             float V = visibility(roughness, NoV, NoL);
@@ -1837,7 +1812,7 @@ struct FroxelParams {
 uvec3 getFroxelCoords(const vec3 fragCoords) {
     uvec3 froxelCoord;
 
-    froxelCoord.xy = uvec2((fragCoords.xy - u_frameUniforms_origin.xy) *
+    froxelCoord.xy = uvec2((fragCoords.xy - u_viewRect.xy) *
             vec2(u_frameUniforms_oneOverFroxelDimension, u_frameUniforms_oneOverFroxelDimensionY));
 
     froxelCoord.z = uint(max(0.0,
@@ -1873,7 +1848,7 @@ ivec2 getFroxelTexCoord(uint froxelIndex) {
  */
 FroxelParams getFroxelParams(uint froxelIndex) {
     ivec2 texCoord = getFroxelTexCoord(froxelIndex);
-    uvec2 entry = texelFetch(light_froxels, texCoord, 0).rg;
+    uvec2 entry = texelFetch(s_texLightFroxels, texCoord, 0).rg;
 
     FroxelParams froxel;
     froxel.recordOffset = entry.r;
@@ -1937,7 +1912,7 @@ void setupPunctualLight(inout Light light, const highp vec4 positionFalloff) {
 Light getSpotLight(uint index) {
     Light light;
     ivec2 texCoord = getRecordTexCoord(index);
-    uint lightIndex = texelFetch(light_records, texCoord, 0).r;
+    uint lightIndex = texelFetch(s_texLightRecords, texCoord, 0).r;
 
     highp vec4 positionFalloff = u_lights[4 * (lightIndex) + (0)];
     highp vec4 colorIntensity  = u_lights[4 * (lightIndex) + (1)];
@@ -1965,7 +1940,7 @@ Light getSpotLight(uint index) {
 Light getPointLight(uint index) {
     Light light;
     ivec2 texCoord = getRecordTexCoord(index);
-    uint lightIndex = texelFetch(light_records, texCoord, 0).r;
+    uint lightIndex = texelFetch(s_texLightRecords, texCoord, 0).r;
 
     highp vec4 positionFalloff = u_lights[4 * (lightIndex) + (0)];
     highp vec4 colorIntensity  = u_lights[4 * (lightIndex) + (1)];
@@ -2064,7 +2039,7 @@ void evaluateDirectionalLight(const MaterialInputs material,
     float visibility = 1.0;
 #if defined(HAS_SHADOWING)
     if (light.NoL > 0.0) {
-        visibility = shadow2D(light_shadowMap, getLightSpacePosition());
+        visibility = shadow2D(s_texShadowMap, getLightSpacePosition());
         #if defined(MATERIAL_HAS_AMBIENT_OCCLUSION)
         visibility *= computeMicroShadowing(light.NoL, material.ambientOcclusion);
         #endif

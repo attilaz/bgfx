@@ -21,7 +21,7 @@ static float s_texelHalf = 0.0f;
 
 struct Uniforms
 {
-	enum { FrameNumVec4 = 25 };
+	enum { FrameNumVec4 = 21 };
 	enum { ObjectNumVec4 = 6 };
 	enum { MaterialNumVec4 = 8 };
 
@@ -51,19 +51,15 @@ struct Uniforms
 		struct
 		{
 			/* 0-3 */ float m_lightFromWorldMatrix[16];
-			/* 4   */ float m_resolution[4];
-			/* 5   */ struct { float m_cameraPosition[3], m_time; };
-			/* 6   */ struct { float m_lightColorIntensity[4]; };
-			/* 7   */ struct { float m_sun[4]; };
-			/* 8   */ struct { float m_lightDirection[3], m_fParamsX; };
-			/* 9   */ struct { float m_shadowBias[3], m_oneOverFroxelDimensionY; };
-			/*10   */ struct { float m_zParams[4]; };
-			/*11   */ struct { float m_fParams[2], m_origin[2]; };
-			/*12   */ struct { float m_oneOverFroxelDimension, iblLuminance, m_exposure, m_ev100; };
-			/*13-21*/ struct { float m_iblSH[9][4]; };
-			/*22   */ struct { float userTime[4]; };
-			/*23   */ struct { float iblMaxMipLevel[2], m_unused0[2]; };
-			/*24   */ struct { float worldOffset[3], m_unused1; };
+			/* 4   */ struct { float m_cameraPosition[3], m_unused0; };
+			/* 5   */ struct { float m_lightColorIntensity[4]; };
+			/* 6   */ struct { float m_sun[4]; };
+			/* 7   */ struct { float m_lightDirection[3], m_fParamsX; };
+			/* 8   */ struct { float m_shadowBias[3], m_oneOverFroxelDimensionY; };
+			/* 9   */ struct { float m_zParams[4]; };
+			/*10   */ struct { float m_oneOverFroxelDimension, iblLuminance, m_exposure, m_ev100; };
+			/*11-19*/ struct { float m_iblSH[9][4]; };
+			/*20   */ struct { float iblMaxMipLevel[2], m_fParams[2]; };
 		};
 
 		float m_frameParams[FrameNumVec4*4];
@@ -869,8 +865,8 @@ public:
 	bgfx::UniformHandle s_texCube;
 	bgfx::UniformHandle s_texCubeIrr;
 
-	bgfx::UniformHandle s_texLight_iblDFG;
-	bgfx::UniformHandle s_texLight_iblSpecular;
+	bgfx::UniformHandle s_texIblDFG;
+	bgfx::UniformHandle s_texIblSpecular;
 
 	bgfx::ProgramHandle m_programMesh;
 	bgfx::ProgramHandle m_programSky;
