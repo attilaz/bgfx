@@ -50,20 +50,29 @@ BLEND_MODE_FADE
 
 uniform float4 u_frameUniforms[25];
 
-#define u_frameUniforms_lightFromWorldMatrix mat4(u_frameUniforms[0],u_frameUniforms[1],u_frameUniforms[2],u_frameUniforms[3])
-#define u_frameUniforms_resolution  u_frameUniforms[4]
+// todo: use
+// - `u_viewRect vec4(x, y, width, height)` - view rectangle for current view, in pixels.
+// - `u_viewTexel vec4(1.0/width, 1.0/height, undef, undef)` - inverse width and height
+// instead of u_frameUniforms_resolution and u_frameUniforms_origin
+
+// todo: remove u_frameUniforms_time and u_frameUniforms_userTime and related functions
+// todo: remove u_frameUniforms_worldOffset and related functions
+
+
+#define u_frameUniforms_lightFromWorldMatrix mat4(u_frameUniforms[0],u_frameUniforms[1],u_frameUniforms[2],u_frameUniforms[3])	//directional light shadow
+#define u_frameUniforms_resolution  u_frameUniforms[4]	// width, height, 1 / width, 1 / height
 #define u_frameUniforms_cameraPosition  u_frameUniforms[5].xyz
 #define u_frameUniforms_time            u_frameUniforms[5].w
-#define u_frameUniforms_lightColorIntensity u_frameUniforms[6]
-#define u_frameUniforms_sun u_frameUniforms[7]
-#define u_frameUniforms_lightDirection u_frameUniforms[8].xyz
-#define u_frameUniforms_fParamsX uint(u_frameUniforms[8].w)
-#define u_frameUniforms_shadowBias u_frameUniforms[9].xyz
-#define u_frameUniforms_oneOverFroxelDimensionY uint(u_frameUniforms[9].w)
-#define u_frameUniforms_zParams u_frameUniforms[10]
-#define u_frameUniforms_fParams uint2(u_frameUniforms[11].xy)
-#define u_frameUniforms_origin u_frameUniforms[11].zw
-#define u_frameUniforms_oneOverFroxelDimension u_frameUniforms[12].x
+#define u_frameUniforms_lightColorIntensity u_frameUniforms[6]	// xyz - directional light color, .w - light intensity premultiplied with exposure
+#define u_frameUniforms_sun u_frameUniforms[7]	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
+#define u_frameUniforms_lightDirection u_frameUniforms[8].xyz // directional light direction
+#define u_frameUniforms_fParamsX uint(u_frameUniforms[8].w) // froxelCoordScale X
+#define u_frameUniforms_shadowBias u_frameUniforms[9].xyz // 0, normalBias * texelSizeWorldSpace, 0
+#define u_frameUniforms_oneOverFroxelDimensionY uint(u_frameUniforms[9].w)  // 1.0 / FroxelDimY
+#define u_frameUniforms_zParams u_frameUniforms[10]   // needed by froxel Z coord computation
+#define u_frameUniforms_fParams uint2(u_frameUniforms[11].xy)   // froxelCoordScale YZ
+#define u_frameUniforms_origin u_frameUniforms[11].zw  // viewport.xy - This could use
+#define u_frameUniforms_oneOverFroxelDimension u_frameUniforms[12].x   // 1.0 / FroxelDimX
 #define u_frameUniforms_iblLuminance u_frameUniforms[12].y
 #define u_frameUniforms_exposure u_frameUniforms[12].z
 #define u_frameUniforms_ev100 u_frameUniforms[12].w
@@ -283,21 +292,6 @@ vec3 getWorldCameraPosition() {
 /** @public-api */
 highp vec3 getWorldOffset() {
     return u_frameUniforms_worldOffset;
-}
-
-/** @public-api */
-float getTime() {
-    return u_frameUniforms_time;
-}
-
-/** @public-api */
-highp vec4 getUserTime() {
-    return u_frameUniforms_userTime;
-}
-
-/** @public-api **/
-highp float getUserTimeMod(float m) {
-    return mod(mod(u_frameUniforms_userTime.x, m) + mod(u_frameUniforms_userTime.y, m), m);
 }
 
 /** @public-api */
@@ -615,21 +609,6 @@ float getNdotV() {
     return shading_NoV;
 }
 
-/**
- * Transforms a texture UV to make it suitable for a render target attachment.
- *
- * In Vulkan and Metal, texture coords are Y-down but in OpenGL they are Y-up. This wrapper function
- * accounts for these differences. When sampling from non-render targets (i.e. uploaded textures)
- * these differences do not matter because OpenGL has a second piece of backwardness, which is that
- * the first row of texels in glTexImage2D is interpreted as the bottom row.
- *
- * To protect users from these differences, we recommend that materials in the SURFACE domain
- * leverage this wrapper function when sampling from offscreen render targets.
- *
- * @public-api
- */
-
-
 #if defined(HAS_SHADOWING) && defined(HAS_DIRECTIONAL_LIGHTING)
 highp vec3 getLightSpacePosition() {
     return vertex_lightSpacePosition.xyz * (1.0 / vertex_lightSpacePosition.w);
@@ -642,14 +621,6 @@ bool isDoubleSided() {
 }
 #endif
 
-//------------------------------------------------------------------------------
-// Material evaluation
-//------------------------------------------------------------------------------
-
-/**
- * Computes global shading parameters used to apply lighting, such as the view
- * vector in world space, the tangent frame at the shading point, etc.
- */
 
 
 /**
@@ -880,7 +851,7 @@ vec3 heatmap(float v) {
 float evaluateSSAO() {
     // TODO: Don't use gl_FragCoord.xy, use the view bounds
     vec2 uv = s_FragCoord.xy * u_frameUniforms_resolution.zw;
-    return texture2D(light_ssao, uv, 0.0).r;
+    return texture2DBias(light_ssao, uv, 0.0).r;
 }
 
 /**
@@ -1708,7 +1679,7 @@ vec3 isEvaluateIBL(const PixelParams pixel, vec3 n, vec3 v, float NoV) {
             float mipLevel = prefilteredImportanceSampling(ipdf, iblMaxMipLevel);
 
             // we use texture() instead of textureLod() to take advantage of mipmapping
-            vec3 L = decodeDataForIBL(textureCube(light_iblSpecular, l, mipLevel));
+            vec3 L = decodeDataForIBL(textureCubeBias(light_iblSpecular, l, mipLevel));
 
             float D = distribution(roughness, NoH, h);
             float V = visibility(roughness, NoV, NoL);
