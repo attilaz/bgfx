@@ -36,10 +36,10 @@ uniform vec4 u_materialInput[8];
 #define MATERIAL_HAS_EMISSIVE
 
 //lighting
-#define HAS_SHADOWING
+//#define HAS_SHADOWING
 #define HAS_DIRECTIONAL_LIGHTING
-#define HAS_DYNAMIC_LIGHTING
-#define HAS_SHADOW_MULTIPLIER
+//#define HAS_DYNAMIC_LIGHTING
+//#define HAS_SHADOW_MULTIPLIER
 
 #define GEOMETRIC_SPECULAR_AA
 #define SPECULAR_AMBIENT_OCCLUSION	(1)
@@ -47,7 +47,7 @@ uniform vec4 u_materialInput[8];
 #define CLEAR_COAT_IOR_CHANGE
 
 //#define BLEND_MODE_MASKED
-#define BLEND_MODE_TRANSPARENT
+//#define BLEND_MODE_TRANSPARENT
 //#define BLEND_MODE_FADE
 
 
