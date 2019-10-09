@@ -57,7 +57,7 @@ struct Uniforms
 			/* 7   */ struct { float m_lightDirection[3], m_fParamsX; };
 			/* 8   */ struct { float m_shadowBias[3], m_oneOverFroxelDimensionY; };
 			/* 9   */ struct { float m_zParams[4]; };
-			/*10   */ struct { float m_oneOverFroxelDimension, iblLuminance, m_exposure, m_ev100; };
+			/*10   */ struct { float m_oneOverFroxelDimension, m_iblLuminance, m_exposure, m_ev100; };
 			/*11-19*/ struct { float m_iblSH[9][4]; };
 			/*20   */ struct { float iblMaxMipLevel[2], m_fParams[2]; };
 		};
@@ -197,20 +197,58 @@ struct LightProbe
 
 		bx::snprintf(filePath, BX_COUNTOF(filePath), "textures/%s_lod.dds", _name);
 		m_tex = loadTexture(filePath, BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP|BGFX_SAMPLER_W_CLAMP);
-
-		bx::snprintf(filePath, BX_COUNTOF(filePath), "textures/%s_irr.dds", _name);
-		m_texIrr = loadTexture(filePath, BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP|BGFX_SAMPLER_W_CLAMP);
 	}
 
 	void destroy()
 	{
 		bgfx::destroy(m_tex);
-		bgfx::destroy(m_texIrr);
 	}
 
 	bgfx::TextureHandle m_tex;
-	bgfx::TextureHandle m_texIrr;
 };
+
+	// "textures/teufelsberg_lookout_ibl.ktx"
+float s_teufelsberg_lookout_sh[9][4] =
+{
+	{ 1.033135294914246,  1.240853190422058,  1.641853094100952 }, // L00, irradiance, pre-scaled base
+	{ 0.174028113484383,  0.271607637405396,  0.534212946891785 }, // L1-1, irradiance, pre-scaled base
+	{ 0.517928361892700,  0.721139192581177,  1.262967824935913 }, // L10, irradiance, pre-scaled base
+	{ 0.664545714855194,  0.628159761428833,  0.453870892524719 }, // L11, irradiance, pre-scaled base
+	{ 0.073169127106667,  0.060536645352840,  0.036284871399403 }, // L2-2, irradiance, pre-scaled base
+	{ 0.147108390927315,  0.310699999332428,  0.680426359176636 }, // L2-1, irradiance, pre-scaled base
+	{ -0.013953230343759,  0.038428101688623,  0.148265913128853 }, // L20, irradiance, pre-scaled base
+	{ 0.101323686540127,  0.099259167909622,  0.119761399924755 }, // L21, irradiance, pre-scaled base
+	{ 0.463056743144989,  0.472212910652161,  0.450877964496613 }, // L22, irradiance, pre-scaled base
+};
+	
+	// "textures/cape_hill_ibl.ktx"
+float s_cape_hill_sh[9][4] =
+{
+	{ 0.470912307500839,  0.375074952840805,  0.199702173471451 }, // L00, irradiance, pre-scaled base
+	{ 0.110779501497746,  0.107183508574963,  0.101078890264034 }, // L1-1, irradiance, pre-scaled base
+	{ 0.594431459903717,  0.433289110660553,  0.144471630454063 }, // L10, irradiance, pre-scaled base
+	{-0.445300042629242, -0.324924767017365, -0.110353000462055 }, // L11, irradiance, pre-scaled base
+	{-0.070068545639515, -0.056038860231638, -0.027694350108504 }, // L2-2, irradiance, pre-scaled base
+	{ 0.101110078394413,  0.081764772534370,  0.041827443987131 }, // L2-1, irradiance, pre-scaled base
+	{ 0.089141719043255,  0.064426310360432,  0.020202396437526 }, // L20, irradiance, pre-scaled base
+	{-0.562590062618256, -0.405030250549316, -0.126809135079384 }, // L21, irradiance, pre-scaled base
+	{ 0.114094585180283,  0.084839887917042,  0.030127054080367 }, // L22, irradiance, pre-scaled base
+};
+
+	// "textures/small_hangar_01_ibl.ktx"
+float s_small_hangar_01_sh[9][4] =
+{
+	{ 0.727795064449310,  0.659785389900208,  0.605563223361969 }, // L00, irradiance, pre-scaled base
+	{ 0.141508892178535,  0.147570356726646,  0.154632449150085 }, // L1-1, irradiance, pre-scaled base
+	{ 0.552958190441132,  0.513145864009857,  0.473500430583954 }, // L10, irradiance, pre-scaled base
+	{-0.343778431415558, -0.372748464345932, -0.426187932491302 }, // L11, irradiance, pre-scaled base
+	{-0.079005286097527, -0.081963807344437, -0.091765619814396 }, // L2-2, irradiance, pre-scaled base
+	{ 0.124498769640923,  0.138117402791977,  0.148704007267952 }, // L2-1, irradiance, pre-scaled base
+	{ 0.045846488326788,  0.040140554308891,  0.030297346413136 }, // L20, irradiance, pre-scaled base
+	{-0.094629704952240, -0.119590513408184, -0.151496425271034 }, // L21, irradiance, pre-scaled base
+	{ 0.183159321546555,  0.185391694307327,  0.191680058836937 }, // L22, irradiance, pre-scaled base
+};
+	
 
 struct Camera
 {
@@ -430,7 +468,7 @@ struct Settings
 	int32_t m_metalOrSpec;
 	int32_t m_meshSelection;
 };
-
+	
 class ExamplePbr : public entry::AppI
 {
 public:
@@ -487,8 +525,8 @@ public:
 		u_params     = bgfx::createUniform("u_params",     bgfx::UniformType::Vec4);
 		u_flags      = bgfx::createUniform("u_flags",      bgfx::UniformType::Vec4);
 		u_camPos     = bgfx::createUniform("u_camPos",     bgfx::UniformType::Vec4);
-		s_texCube    = bgfx::createUniform("s_texCube",    bgfx::UniformType::Sampler);
-		s_texCubeIrr = bgfx::createUniform("s_texCubeIrr", bgfx::UniformType::Sampler);
+		s_texIblDFG      = bgfx::createUniform("s_texIblDFG",    bgfx::UniformType::Sampler);
+		s_texIblSpecular = bgfx::createUniform("s_texIblSpecular", bgfx::UniformType::Sampler);
 
 		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
 		m_programSky   = loadProgram("vs_ibl_skybox", "fs_ibl_skybox");
@@ -511,8 +549,8 @@ public:
 		bgfx::destroy(u_params);
 		bgfx::destroy(u_mtx);
 
-		bgfx::destroy(s_texCube);
-		bgfx::destroy(s_texCubeIrr);
+		bgfx::destroy(s_texIblDFG);
+		bgfx::destroy(s_texIblSpecular);
 
 		for (uint8_t ii = 0; ii < LightProbe::Count; ++ii)
 		{
@@ -711,6 +749,10 @@ public:
 			bx::memCopy(m_uniforms.m_lightCol, m_settings.m_lightCol, 3*sizeof(float) );
 #endif
 			
+			bx::memCopy(m_uniforms.m_iblSH, s_teufelsberg_lookout_sh, sizeof(s_teufelsberg_lookout_sh));
+			bx::memCopy(m_uniforms.m_iblSH, s_cape_hill_sh, sizeof(s_cape_hill_sh));
+			bx::memCopy(m_uniforms.m_iblSH, s_small_hangar_01_sh, sizeof(s_small_hangar_01_sh));
+			
 			int64_t now = bx::getHPCounter();
 			static int64_t last = now;
 			const int64_t frameTime = now - last;
@@ -778,8 +820,8 @@ public:
 #endif
 
 			// Submit view 0.
-			bgfx::setTexture(0, s_texCube, m_lightProbes[m_currentLightProbe].m_tex);
-			bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+			//bgfx::setTexture(0, s_texCube, m_lightProbes[m_currentLightProbe].m_tex);
+			//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
 			bgfx::setState(BGFX_STATE_WRITE_RGB|BGFX_STATE_WRITE_A);
 			screenSpaceQuad( (float)m_width, (float)m_height, true);
 			m_uniforms.submit();
@@ -794,8 +836,8 @@ public:
 				// Submit bunny.
 				float mtx[16];
 				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, bx::kPi, 0.0f, 0.0f, -0.80f, 0.0f);
-				bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
-				bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+				//bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
+				//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
 				m_uniforms.submit();
 				meshSubmit(m_meshBunny, 1, m_programMesh, mtx);
 			}
@@ -830,8 +872,8 @@ public:
 #endif
 						m_uniforms.submit();
 
-						bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
-						bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+						//bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
+						//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
 						meshSubmit(m_meshOrb, 1, m_programMesh, mtx);
 					}
 				}
@@ -862,9 +904,6 @@ public:
 	bgfx::UniformHandle u_params;
 	bgfx::UniformHandle u_flags;
 	bgfx::UniformHandle u_camPos;
-	bgfx::UniformHandle s_texCube;
-	bgfx::UniformHandle s_texCubeIrr;
-
 	bgfx::UniformHandle s_texIblDFG;
 	bgfx::UniformHandle s_texIblSpecular;
 
