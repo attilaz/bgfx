@@ -185,18 +185,21 @@ struct LightProbe
 {
 	enum Enum
 	{
-		Bolonga,
-		Kyoto,
+		TeufelsbergLookout,
+		CapeHill,
+		SmallHangar,
 
 		Count
 	};
 
-	void load(const char* _name)
+	void load(const char* _name, const float* _sh)
 	{
 		char filePath[512];
 
-		bx::snprintf(filePath, BX_COUNTOF(filePath), "textures/%s_lod.dds", _name);
+		bx::snprintf(filePath, BX_COUNTOF(filePath), "textures/%s.ktx", _name);
 		m_tex = loadTexture(filePath, BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP|BGFX_SAMPLER_W_CLAMP);
+
+		bx::memCopy(m_sh, _sh, sizeof(m_sh));
 	}
 
 	void destroy()
@@ -205,9 +208,9 @@ struct LightProbe
 	}
 
 	bgfx::TextureHandle m_tex;
+	float               m_sh[9][4];
 };
 
-	// "textures/teufelsberg_lookout_ibl.ktx"
 float s_teufelsberg_lookout_sh[9][4] =
 {
 	{ 1.033135294914246,  1.240853190422058,  1.641853094100952 }, // L00, irradiance, pre-scaled base
@@ -221,7 +224,6 @@ float s_teufelsberg_lookout_sh[9][4] =
 	{ 0.463056743144989,  0.472212910652161,  0.450877964496613 }, // L22, irradiance, pre-scaled base
 };
 	
-	// "textures/cape_hill_ibl.ktx"
 float s_cape_hill_sh[9][4] =
 {
 	{ 0.470912307500839,  0.375074952840805,  0.199702173471451 }, // L00, irradiance, pre-scaled base
@@ -235,7 +237,6 @@ float s_cape_hill_sh[9][4] =
 	{ 0.114094585180283,  0.084839887917042,  0.030127054080367 }, // L22, irradiance, pre-scaled base
 };
 
-	// "textures/small_hangar_01_ibl.ktx"
 float s_small_hangar_01_sh[9][4] =
 {
 	{ 0.727795064449310,  0.659785389900208,  0.605563223361969 }, // L00, irradiance, pre-scaled base
@@ -517,9 +518,12 @@ public:
 		// Vertex declarations.
 		PosColorTexCoord0Vertex::init();
 
-		m_lightProbes[LightProbe::Bolonga].load("bolonga");
-		m_lightProbes[LightProbe::Kyoto  ].load("kyoto");
-		m_currentLightProbe = LightProbe::Bolonga;
+		m_lightProbes[LightProbe::TeufelsbergLookout].load("teufelsberg_lookout_ibl", (const float*)s_teufelsberg_lookout_sh);
+		m_lightProbes[LightProbe::CapeHill].load("cape_hill_ibl", (const float*)s_cape_hill_sh);
+		m_lightProbes[LightProbe::SmallHangar].load("small_hangar_01_ibl", (const float*)s_small_hangar_01_sh);
+		m_currentLightProbe = LightProbe::TeufelsbergLookout;
+
+		m_texIblDFG = loadTexture("textures/dfg_ibl.dds");
 
 		u_mtx        = bgfx::createUniform("u_mtx",        bgfx::UniformType::Mat4);
 		u_params     = bgfx::createUniform("u_params",     bgfx::UniformType::Vec4);
@@ -551,6 +555,8 @@ public:
 
 		bgfx::destroy(s_texIblDFG);
 		bgfx::destroy(s_texIblSpecular);
+
+		bgfx::destroy(m_texIblDFG);
 
 		for (uint8_t ii = 0; ii < LightProbe::Count; ++ii)
 		{
@@ -604,15 +610,21 @@ public:
 
 			if (ImGui::BeginTabBar("Cubemap", ImGuiTabBarFlags_None) )
 			{
-				if (ImGui::BeginTabItem("Bolonga") )
+				if (ImGui::BeginTabItem("TeufelsbergLookout") )
 				{
-					m_currentLightProbe = LightProbe::Bolonga;
+					m_currentLightProbe = LightProbe::TeufelsbergLookout;
 					ImGui::EndTabItem();
 				}
 
-				if (ImGui::BeginTabItem("Kyoto") )
+				if (ImGui::BeginTabItem("CapeHill") )
 				{
-					m_currentLightProbe = LightProbe::Kyoto;
+					m_currentLightProbe = LightProbe::CapeHill;
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem("SmallHangar"))
+				{
+					m_currentLightProbe = LightProbe::SmallHangar;
 					ImGui::EndTabItem();
 				}
 
@@ -749,9 +761,7 @@ public:
 			bx::memCopy(m_uniforms.m_lightCol, m_settings.m_lightCol, 3*sizeof(float) );
 #endif
 			
-			bx::memCopy(m_uniforms.m_iblSH, s_teufelsberg_lookout_sh, sizeof(s_teufelsberg_lookout_sh));
-			bx::memCopy(m_uniforms.m_iblSH, s_cape_hill_sh, sizeof(s_cape_hill_sh));
-			bx::memCopy(m_uniforms.m_iblSH, s_small_hangar_01_sh, sizeof(s_small_hangar_01_sh));
+			bx::memCopy(m_uniforms.m_iblSH, m_lightProbes[m_currentLightProbe].m_sh, sizeof(m_lightProbes[m_currentLightProbe].m_sh));
 			
 			int64_t now = bx::getHPCounter();
 			static int64_t last = now;
@@ -820,8 +830,8 @@ public:
 #endif
 
 			// Submit view 0.
-			//bgfx::setTexture(0, s_texCube, m_lightProbes[m_currentLightProbe].m_tex);
-			//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+			bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
+			bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 			bgfx::setState(BGFX_STATE_WRITE_RGB|BGFX_STATE_WRITE_A);
 			screenSpaceQuad( (float)m_width, (float)m_height, true);
 			m_uniforms.submit();
@@ -836,8 +846,8 @@ public:
 				// Submit bunny.
 				float mtx[16];
 				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, bx::kPi, 0.0f, 0.0f, -0.80f, 0.0f);
-				//bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
-				//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
+				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 				m_uniforms.submit();
 				meshSubmit(m_meshBunny, 1, m_programMesh, mtx);
 			}
@@ -872,8 +882,8 @@ public:
 #endif
 						m_uniforms.submit();
 
-						//bgfx::setTexture(0, s_texCube,    m_lightProbes[m_currentLightProbe].m_tex);
-						//bgfx::setTexture(1, s_texCubeIrr, m_lightProbes[m_currentLightProbe].m_texIrr);
+						bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
+						bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 						meshSubmit(m_meshOrb, 1, m_programMesh, mtx);
 					}
 				}
@@ -899,6 +909,8 @@ public:
 
 	LightProbe m_lightProbes[LightProbe::Count];
 	LightProbe::Enum m_currentLightProbe;
+
+	bgfx::TextureHandle m_texIblDFG;
 
 	bgfx::UniformHandle u_mtx;
 	bgfx::UniformHandle u_params;
