@@ -17,8 +17,6 @@
 namespace
 {
 
-static float s_texelHalf = 0.0f;
-
 struct Uniforms
 {
 	enum { FrameNumVec4 = 21 };
@@ -126,60 +124,6 @@ struct PosColorTexCoord0Vertex
 
 bgfx::VertexLayout PosColorTexCoord0Vertex::ms_layout;
 
-void screenSpaceQuad(float _textureWidth, float _textureHeight, bool _originBottomLeft = false, float _width = 1.0f, float _height = 1.0f)
-{
-	if (3 == bgfx::getAvailTransientVertexBuffer(3, PosColorTexCoord0Vertex::ms_layout) )
-	{
-		bgfx::TransientVertexBuffer vb;
-		bgfx::allocTransientVertexBuffer(&vb, 3, PosColorTexCoord0Vertex::ms_layout);
-		PosColorTexCoord0Vertex* vertex = (PosColorTexCoord0Vertex*)vb.data;
-
-		const float zz = 0.0f;
-
-		const float minx = -_width;
-		const float maxx =  _width;
-		const float miny = 0.0f;
-		const float maxy = _height*2.0f;
-
-		const float texelHalfW = s_texelHalf/_textureWidth;
-		const float texelHalfH = s_texelHalf/_textureHeight;
-		const float minu = -1.0f + texelHalfW;
-		const float maxu =  1.0f + texelHalfW;
-
-		float minv = texelHalfH;
-		float maxv = 2.0f + texelHalfH;
-
-		if (_originBottomLeft)
-		{
-			std::swap(minv, maxv);
-			minv -= 1.0f;
-			maxv -= 1.0f;
-		}
-
-		vertex[0].m_x = minx;
-		vertex[0].m_y = miny;
-		vertex[0].m_z = zz;
-		vertex[0].m_rgba = 0xffffffff;
-		vertex[0].m_u = minu;
-		vertex[0].m_v = minv;
-
-		vertex[1].m_x = maxx;
-		vertex[1].m_y = miny;
-		vertex[1].m_z = zz;
-		vertex[1].m_rgba = 0xffffffff;
-		vertex[1].m_u = maxu;
-		vertex[1].m_v = minv;
-
-		vertex[2].m_x = maxx;
-		vertex[2].m_y = maxy;
-		vertex[2].m_z = zz;
-		vertex[2].m_rgba = 0xffffffff;
-		vertex[2].m_u = maxu;
-		vertex[2].m_v = maxv;
-
-		bgfx::setVertexBuffer(0, &vb);
-	}
-}
 
 struct LightProbe
 {
@@ -524,6 +468,7 @@ public:
 		m_currentLightProbe = LightProbe::TeufelsbergLookout;
 
 		m_texIblDFG = loadTexture("textures/dfg_ibl.dds");
+		m_texSsao = bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::RGBA8);
 
 		u_mtx        = bgfx::createUniform("u_mtx",        bgfx::UniformType::Mat4);
 		u_params     = bgfx::createUniform("u_params",     bgfx::UniformType::Vec4);
@@ -531,9 +476,9 @@ public:
 		u_camPos     = bgfx::createUniform("u_camPos",     bgfx::UniformType::Vec4);
 		s_texIblDFG      = bgfx::createUniform("s_texIblDFG",    bgfx::UniformType::Sampler);
 		s_texIblSpecular = bgfx::createUniform("s_texIblSpecular", bgfx::UniformType::Sampler);
+		s_texSsao        = bgfx::createUniform("s_texSsao", bgfx::UniformType::Sampler);
 
 		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
-		m_programSky   = loadProgram("vs_ibl_skybox", "fs_ibl_skybox");
 
 		m_meshBunny = meshLoad("meshes/bunny.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
@@ -546,7 +491,6 @@ public:
 
 		// Cleanup.
 		bgfx::destroy(m_programMesh);
-		bgfx::destroy(m_programSky);
 
 		bgfx::destroy(u_camPos);
 		bgfx::destroy(u_flags);
@@ -555,8 +499,10 @@ public:
 
 		bgfx::destroy(s_texIblDFG);
 		bgfx::destroy(s_texIblSpecular);
+		bgfx::destroy(s_texSsao);
 
 		bgfx::destroy(m_texIblDFG);
+		bgfx::destroy(m_texSsao);
 
 		for (uint8_t ii = 0; ii < LightProbe::Count; ++ii)
 		{
@@ -646,38 +592,6 @@ public:
 				ImGui::SliderFloat("Light direction Y", &m_settings.m_lightDir[1], -1.0f, 1.0f);
 				ImGui::SliderFloat("Light direction Z", &m_settings.m_lightDir[2], -1.0f, 1.0f);
 				ImGui::ColorWheel("Color:", m_settings.m_lightCol, 0.6f);
-			}
-			ImGui::Unindent();
-
-			ImGui::Separator();
-			ImGui::Text("Background:");
-			ImGui::Indent();
-			{
-				if (ImGui::BeginTabBar("CubemapSelection", ImGuiTabBarFlags_None) )
-				{
-					if (ImGui::BeginTabItem("Irradiance") )
-					{
-						m_settings.m_bgType = m_settings.m_radianceSlider;
-						ImGui::EndTabItem();
-					}
-
-					if (ImGui::BeginTabItem("Radiance") )
-					{
-						m_settings.m_bgType = 7.0f;
-
-						ImGui::SliderFloat("Mip level", &m_settings.m_radianceSlider, 1.0f, 6.0f);
-
-						ImGui::EndTabItem();
-					}
-
-					if (ImGui::BeginTabItem("Skybox") )
-					{
-						m_settings.m_bgType = 0.0f;
-						ImGui::EndTabItem();
-					}
-
-					ImGui::EndTabBar();
-				}
 			}
 			ImGui::Unindent();
 
@@ -829,14 +743,6 @@ public:
 			bx::mtxMul(m_uniforms.m_mtx, mtxEnvView, mtxEnvRot); // Used for Skybox.
 #endif
 
-			// Submit view 0.
-			bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
-			bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
-			bgfx::setState(BGFX_STATE_WRITE_RGB|BGFX_STATE_WRITE_A);
-			screenSpaceQuad( (float)m_width, (float)m_height, true);
-			m_uniforms.submit();
-			bgfx::submit(0, m_programSky);
-
 			// Submit view 1.
 #if 0
 			bx::memCopy(m_uniforms.m_mtx, mtxEnvRot, 16*sizeof(float)); // Used for IBL.
@@ -848,6 +754,7 @@ public:
 				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, bx::kPi, 0.0f, 0.0f, -0.80f, 0.0f);
 				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
 				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
+				bgfx::setTexture(5, s_texSsao, m_texSsao);
 				m_uniforms.submit();
 				meshSubmit(m_meshBunny, 1, m_programMesh, mtx);
 			}
@@ -884,6 +791,8 @@ public:
 
 						bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
 						bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
+						bgfx::setTexture(5, s_texSsao, m_texSsao);
+
 						meshSubmit(m_meshOrb, 1, m_programMesh, mtx);
 					}
 				}
@@ -911,6 +820,7 @@ public:
 	LightProbe::Enum m_currentLightProbe;
 
 	bgfx::TextureHandle m_texIblDFG;
+	bgfx::TextureHandle m_texSsao;
 
 	bgfx::UniformHandle u_mtx;
 	bgfx::UniformHandle u_params;
@@ -918,9 +828,9 @@ public:
 	bgfx::UniformHandle u_camPos;
 	bgfx::UniformHandle s_texIblDFG;
 	bgfx::UniformHandle s_texIblSpecular;
+	bgfx::UniformHandle s_texSsao;
 
 	bgfx::ProgramHandle m_programMesh;
-	bgfx::ProgramHandle m_programSky;
 
 	Mesh* m_meshBunny;
 	Mesh* m_meshOrb;
