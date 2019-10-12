@@ -34,7 +34,7 @@ struct Uniforms
 	{
 		bgfx::setUniform(u_frameUniforms, m_frameParams, FrameNumVec4);
 		bgfx::setUniform(u_objectUniforms, m_objectParams, ObjectNumVec4);
-		bgfx::setUniform(u_materialUniforms, m_objectParams, ObjectNumVec4);
+		bgfx::setUniform(u_materialUniforms, m_materialParams, MaterialNumVec4);
 	}
 
 	void destroy()
@@ -90,7 +90,7 @@ struct Uniforms
 			/* 7 */ struct { float m_specularColor[3], m_glossiness; };
 		};
 		
-		float m_customParams[MaterialNumVec4 * 4];
+		float m_materialParams[MaterialNumVec4 * 4];
 	};
 
 	bgfx::UniformHandle u_frameUniforms;
@@ -469,11 +469,9 @@ public:
 
 		m_texIblDFG = loadTexture("textures/dfg_ibl.dds");
 		m_texSsao = bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::RGBA8);
+		uint32_t whitePixel = 0xffffffff;
+		bgfx::updateTexture2D(m_texSsao, 0, 0, 0, 0, 1, 1, bgfx::copy(&whitePixel, sizeof(whitePixel)));
 
-		u_mtx        = bgfx::createUniform("u_mtx",        bgfx::UniformType::Mat4);
-		u_params     = bgfx::createUniform("u_params",     bgfx::UniformType::Vec4);
-		u_flags      = bgfx::createUniform("u_flags",      bgfx::UniformType::Vec4);
-		u_camPos     = bgfx::createUniform("u_camPos",     bgfx::UniformType::Vec4);
 		s_texIblDFG      = bgfx::createUniform("s_texIblDFG",    bgfx::UniformType::Sampler);
 		s_texIblSpecular = bgfx::createUniform("s_texIblSpecular", bgfx::UniformType::Sampler);
 		s_texSsao        = bgfx::createUniform("s_texSsao", bgfx::UniformType::Sampler);
@@ -492,17 +490,9 @@ public:
 		// Cleanup.
 		bgfx::destroy(m_programMesh);
 
-		bgfx::destroy(u_camPos);
-		bgfx::destroy(u_flags);
-		bgfx::destroy(u_params);
-		bgfx::destroy(u_mtx);
-
 		bgfx::destroy(s_texIblDFG);
 		bgfx::destroy(s_texIblSpecular);
 		bgfx::destroy(s_texSsao);
-
-		bgfx::destroy(m_texIblDFG);
-		bgfx::destroy(m_texSsao);
 
 		for (uint8_t ii = 0; ii < LightProbe::Count; ++ii)
 		{
@@ -658,6 +648,14 @@ public:
 			ImGui::End();
 
 			imguiEndFrame();
+			
+			
+			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
+				m_uniforms.m_frameParams[ii] = 1.0f;
+			for(uint32_t ii=0; ii<Uniforms::ObjectNumVec4*4; ++ii)
+				m_uniforms.m_objectParams[ii] = 1.0f;
+			for(uint32_t ii=0; ii<Uniforms::MaterialNumVec4*4; ++ii)
+				m_uniforms.m_materialParams[ii] = 1.0f;
 
 #if 0
 			m_uniforms.m_glossiness   = m_settings.m_glossiness;
@@ -728,7 +726,6 @@ public:
 
 			// View rect.
 			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height) );
-			bgfx::setViewRect(1, 0, 0, uint16_t(m_width), uint16_t(m_height) );
 
 			// Env rotation.
 			const float amount = bx::min(deltaTimeSec/0.12f, 1.0f);
@@ -756,7 +753,7 @@ public:
 				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 				bgfx::setTexture(5, s_texSsao, m_texSsao);
 				m_uniforms.submit();
-				meshSubmit(m_meshBunny, 1, m_programMesh, mtx);
+				meshSubmit(m_meshBunny, 0, m_programMesh, mtx);
 			}
 			else
 			{
@@ -793,7 +790,7 @@ public:
 						bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 						bgfx::setTexture(5, s_texSsao, m_texSsao);
 
-						meshSubmit(m_meshOrb, 1, m_programMesh, mtx);
+						meshSubmit(m_meshOrb, 0, m_programMesh, mtx);
 					}
 				}
 			}
@@ -822,10 +819,6 @@ public:
 	bgfx::TextureHandle m_texIblDFG;
 	bgfx::TextureHandle m_texSsao;
 
-	bgfx::UniformHandle u_mtx;
-	bgfx::UniformHandle u_params;
-	bgfx::UniformHandle u_flags;
-	bgfx::UniformHandle u_camPos;
 	bgfx::UniformHandle s_texIblDFG;
 	bgfx::UniformHandle s_texIblSpecular;
 	bgfx::UniformHandle s_texSsao;
