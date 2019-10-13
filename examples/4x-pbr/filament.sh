@@ -51,7 +51,7 @@ BLEND_MODE_FADE
 uniform float4 u_frameUniforms[21];
 
 
-#define u_frameUniforms_lightFromWorldMatrix mat4(u_frameUniforms[0],u_frameUniforms[1],u_frameUniforms[2],u_frameUniforms[3])	//directional light shadow
+#define u_frameUniforms_lightFromWorldMatrix mat4(u_frameUniforms[0],u_frameUniforms[1],u_frameUniforms[2],u_frameUniforms[3])	//directional light matrix for shadowing
 #define u_frameUniforms_cameraPosition  u_frameUniforms[4].xyz
 #define u_frameUniforms_lightColorIntensity u_frameUniforms[5]	// xyz - directional light color, .w - light intensity premultiplied with exposure
 #define u_frameUniforms_sun u_frameUniforms[6]	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff

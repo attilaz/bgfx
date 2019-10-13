@@ -57,7 +57,7 @@ struct Uniforms
 			/* 9   */ struct { float m_zParams[4]; };
 			/*10   */ struct { float m_oneOverFroxelDimension, m_iblLuminance, m_exposure, m_ev100; };
 			/*11-19*/ struct { float m_iblSH[9][4]; };
-			/*20   */ struct { float iblMaxMipLevel[2], m_fParams[2]; };
+			/*20   */ struct { float m_iblMaxMipLevel[2], m_fParams[2]; };
 		};
 
 		float m_frameParams[FrameNumVec4*4];
@@ -651,13 +651,64 @@ public:
 			
 			
 			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
-				m_uniforms.m_frameParams[ii] = 1.0f;
+				m_uniforms.m_frameParams[ii] = 0.0f;
+			
+			//xyz - directional light color, .w - light intensity premultiplied with exposure
+			m_uniforms.m_lightColorIntensity[0] = 1.0f;
+			m_uniforms.m_lightColorIntensity[1] = 1.0f;
+			m_uniforms.m_lightColorIntensity[2] = 1.0f;
+			m_uniforms.m_lightColorIntensity[3] = 1.0f;
+			// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
+			m_uniforms.m_sun[0] = bx::cos(1.0f);
+			m_uniforms.m_sun[1] = bx::sin(1.0f);
+			m_uniforms.m_sun[2] = 1.0f / (bx::cos(1.0f*1.0f) - bx::cos(1.0f));
+			m_uniforms.m_sun[3] = 1.0f;
+
+			m_uniforms.m_lightDirection[0] = 0.0f;
+			m_uniforms.m_lightDirection[1] = -1.0f;
+			m_uniforms.m_lightDirection[2] = 0.0f;
+
+			m_uniforms.m_iblLuminance = 1.0f;
+			m_uniforms.m_exposure = 1.0f;
+			m_uniforms.m_ev100 = 1.0f;
+			m_uniforms.m_iblMaxMipLevel[0] = 10.0f;
+			m_uniforms.m_iblMaxMipLevel[1] = 1.0f;
+
 			for(uint32_t ii=0; ii<Uniforms::ObjectNumVec4*4; ++ii)
-				m_uniforms.m_objectParams[ii] = 1.0f;
+				m_uniforms.m_objectParams[ii] = 0.0f;
+			
 			m_uniforms.m_skinningEnabled = 0.0f;
 			m_uniforms.m_morphingEnabled = 0.0f;
+	
+			m_uniforms.m_specularAntiAliasingVariance = 0.0f;
+			m_uniforms.m_specularAntiAliasingThreshold = 0.0f;
+			m_uniforms.m_maskThreshold = 0.0f;
+			m_uniforms.m_doubleSided = 0.0f;
+
 			for(uint32_t ii=0; ii<Uniforms::MaterialNumVec4*4; ++ii)
 				m_uniforms.m_materialParams[ii] = 1.0f;
+
+			float baseColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_baseColor, baseColor, 4*sizeof(float));
+			m_uniforms.m_roughness = 0.0f;
+			m_uniforms.m_metallic = 0.0f;
+			m_uniforms.m_reflectance = 0.0f;
+			float emissive[4] = { 1.0f, 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_emissive, emissive, 4*sizeof(float));
+			m_uniforms.m_clearCoat = 0.0f;
+			m_uniforms.m_clearCoatRoughness = 0.0f;
+			m_uniforms.m_anisotropy = 0.0f;
+			float anisotropyDirection[3] = { 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_anisotropyDirection, anisotropyDirection, 3*sizeof(float));
+			m_uniforms.m_thickness = 1.0f;
+			float subsurfaceColor[3] = { 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_subsurfaceColor, subsurfaceColor, 3*sizeof(float));
+			m_uniforms.m_subsurfacePower = 1.0f;
+			float sheenColor[3] = { 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_sheenColor, sheenColor, 3*sizeof(float));
+			float specularColor[3] = { 1.0f, 1.0f, 1.0f};
+			bx::memCopy(m_uniforms.m_specularColor, specularColor, 3*sizeof(float));
+			m_uniforms.m_glossiness = 1.0f;
 
 #if 0
 			m_uniforms.m_glossiness   = m_settings.m_glossiness;
@@ -707,9 +758,8 @@ public:
 				}
 			}
 			m_camera.update(deltaTimeSec);
-#if 0
-			bx::memCopy(m_uniforms.m_cameraPos, &m_camera.m_pos.curr.x, 3*sizeof(float) );
-#endif
+			
+			bx::memCopy(m_uniforms.m_cameraPosition, &m_camera.m_pos.curr.x, 3*sizeof(float) );
 
 			const bgfx::Caps* caps = bgfx::getCaps();
 
@@ -727,19 +777,6 @@ public:
 			const float amount = bx::min(deltaTimeSec/0.12f, 1.0f);
 			m_settings.m_envRotCurr = bx::lerp(m_settings.m_envRotCurr, m_settings.m_envRotDest, amount);
 
-			// Env mtx.
-			float mtxEnvView[16];
-			m_camera.envViewMtx(mtxEnvView);
-			float mtxEnvRot[16];
-			bx::mtxRotateY(mtxEnvRot, m_settings.m_envRotCurr);
-#if 0
-			bx::mtxMul(m_uniforms.m_mtx, mtxEnvView, mtxEnvRot); // Used for Skybox.
-#endif
-
-			// Submit view 1.
-#if 0
-			bx::memCopy(m_uniforms.m_mtx, mtxEnvRot, 16*sizeof(float)); // Used for IBL.
-#endif
 			if (0 == m_settings.m_meshSelection)
 			{
 				// Submit bunny.
@@ -748,6 +785,11 @@ public:
 				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
 				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 				bgfx::setTexture(5, s_texSsao, m_texSsao);
+				
+				float mtxCof[4*4];
+				bx::mtxCofactor(mtxCof, mtx);
+				bx::memCopy(m_uniforms.m_worldFromModelNormalMatrix, mtxCof, 3*4*sizeof(float));
+
 				m_uniforms.submit();
 				meshSubmit(m_meshBunny, 0, m_programMesh, mtx);
 			}
