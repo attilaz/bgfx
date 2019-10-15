@@ -77,7 +77,7 @@ uniform float4 u_objectUniforms[6];
 #define u_objectUniforms_padding0 u_objectUniforms[4].zw
 #define u_objectUniforms_specularAntiAliasingVariance u_objectUniforms[5].x
 #define u_objectUniforms_specularAntiAliasingThreshold u_objectUniforms[5].y
-#define u_objectUniforms_maskThreshold u_objectUniforms[5].z
+#define u_objectUniforms_maskThreshold u_objectUniforms[5].z	// fragment discard/kill threshold, used in BLEND_MODE_MASKED
 #define u_objectUniforms_doubleSided (0.0 != u_objectUniforms[5].w)
 
 #if BGFX_SHADER_TYPE_VERTEX

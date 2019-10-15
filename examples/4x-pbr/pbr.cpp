@@ -360,11 +360,10 @@ struct Settings
 {
 	Settings()
 	{
-		//xyz - directional light color, .w - light intensity premultiplied with exposure
-		m_lightColorIntensity[0] = 1.0f;
-		m_lightColorIntensity[1] = 1.0f;
-		m_lightColorIntensity[2] = 1.0f;
-		m_lightColorIntensity[3] = 1.0f;
+		m_lightColor[0] = 1.0f;
+		m_lightColor[1] = 1.0f;
+		m_lightColor[2] = 1.0f;
+		m_lightIntensity = 1.0f;
 		// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
 		m_sunRadius = 1.0f;
 		m_sunHaloSize = 1.0f;
@@ -382,7 +381,6 @@ struct Settings
 		
 		m_specularAntiAliasingVariance = 0.0f;
 		m_specularAntiAliasingThreshold = 0.0f;
-		m_maskThreshold = 0.0f;
 		m_doubleSided = 0.0f;
 		
 		float baseColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f};
@@ -410,8 +408,8 @@ struct Settings
 		m_meshSelection = 0;
 	}
 
-	//xyz - directional light color, .w - light intensity premultiplied with exposure
-	float m_lightColorIntensity[4];
+	float m_lightColor[3];
+	float m_lightIntensity;
 	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
 	float m_sunRadius;
 	float m_sunHaloSize;
@@ -425,7 +423,6 @@ struct Settings
 	
 	float m_specularAntiAliasingVariance;
 	float m_specularAntiAliasingThreshold;
-	float m_maskThreshold = 0.0f;
 	bool m_doubleSided;
 	
 	float m_baseColor[4];
@@ -598,31 +595,35 @@ public:
 				ImGui::EndTabBar();
 			}
 
-//			ImGui::SliderFloat("Texture LOD", &m_settings.m_lod, 0.0f, 10.1f);
+			ImGui::SliderFloat("Max Mip Level", &m_settings.m_iblMaxMipLevel[0], 0.0f, 10.1f);
+			ImGui::SliderFloat("Max Mip ???", &m_settings.m_iblMaxMipLevel[1], 0.0f, 10.1f);
+
+			ImGui::SliderFloat("Ibl Luminance", &m_settings.m_iblLuminance, 0.0f, 1.0f);
+			
 			ImGui::Unindent();
 
-#if 0
 			ImGui::Separator();
 			ImGui::Text("Directional light:");
 			ImGui::Indent();
-			ImGui::Checkbox("Diffuse",  &m_settings.m_doDiffuse);
-			ImGui::Checkbox("Specular", &m_settings.m_doSpecular);
-			const bool doDirectLighting = m_settings.m_doDiffuse || m_settings.m_doSpecular;
-			if (doDirectLighting)
-			{
-				ImGui::SliderFloat("Light direction X", &m_settings.m_lightDir[0], -1.0f, 1.0f);
-				ImGui::SliderFloat("Light direction Y", &m_settings.m_lightDir[1], -1.0f, 1.0f);
-				ImGui::SliderFloat("Light direction Z", &m_settings.m_lightDir[2], -1.0f, 1.0f);
-				ImGui::ColorWheel("Color:", m_settings.m_lightCol, 0.6f);
-			}
+			
+			ImGui::SliderFloat("Direction X", &m_settings.m_lightDirection[0], -1.0f, 1.0f);
+			ImGui::SliderFloat("Direction Y", &m_settings.m_lightDirection[1], -1.0f, 1.0f);
+			ImGui::SliderFloat("Direction Z", &m_settings.m_lightDirection[2], -1.0f, 1.0f);
+			ImGui::ColorPicker3("Color", m_settings.m_lightColor);
+			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100.0f, "%.2f", 2.0f);
+			
+			ImGui::SliderFloat("Radius", &m_settings.m_sunRadius, 0.0f, 100.0f);
+			ImGui::SliderFloat("Halo Size", &m_settings.m_sunHaloSize, 0.0f, 100.0f);
+			ImGui::SliderFloat("Halo Falloff", &m_settings.m_sunHaloFalloff, 0.0f, 100.0f);
+
 			ImGui::Unindent();
 
 			ImGui::Separator();
-			ImGui::Text("Post processing:");
+			ImGui::Text("Camera:");
 			ImGui::Indent();
 			ImGui::SliderFloat("Exposure",& m_settings.m_exposure, -4.0f, 4.0f);
+			ImGui::SliderFloat("Ev100",& m_settings.m_ev100, 0.0f, 1.0f);
 			ImGui::Unindent();
-#endif
 			
 			ImGui::PopItemWidth();
 			ImGui::End();
@@ -653,32 +654,37 @@ public:
 			}
 			else
 			{
-#if 0
 				ImGui::Separator();
-				ImGui::Text("Workflow:");
-				ImGui::Indent();
-				ImGui::RadioButton("Metalness", &m_settings.m_metalOrSpec, 0);
-				ImGui::RadioButton("Specular", &m_settings.m_metalOrSpec, 1);
-				ImGui::Unindent();
 
 				ImGui::Separator();
 				ImGui::Text("Material:");
 				ImGui::Indent();
 				ImGui::PushItemWidth(130.0f);
-				ImGui::SliderFloat("Glossiness", &m_settings.m_glossiness, 0.0f, 1.0f);
-				ImGui::SliderFloat(0 == m_settings.m_metalOrSpec ? "Metalness" : "Diffuse - Specular", &m_settings.m_reflectivity, 0.0f, 1.0f);
+				
+				ImGui::ColorEdit4("Base Color", m_settings.m_baseColor);
+				ImGui::SliderFloat("Roughness", &m_settings.m_roughness, 0.0f, 1.0f );
+				ImGui::SliderFloat("Metallic", &m_settings.m_metallic, 0.0f, 1.0f );
+				ImGui::SliderFloat("Reflectance", &m_settings.m_reflectance, 0.0f, 1.0f );
+				ImGui::ColorEdit4("Emissive", m_settings.m_emissive);
+				ImGui::SliderFloat("Clear Coat", &m_settings.m_clearCoat, 0.0f, 1.0f );
+				ImGui::SliderFloat("Clear Coat Roughness", &m_settings.m_clearCoatRoughness, 0.0f, 1.0f );
+				ImGui::SliderFloat("Anisotropy", &m_settings.m_anisotropy, -1.0f, 1.0f );
+				ImGui::SliderFloat("Anisotropy X", &m_settings.m_anisotropyDirection[0], -1.0f, 1.0f );
+				ImGui::SliderFloat("Anisotropy Y", &m_settings.m_anisotropyDirection[1], -1.0f, 1.0f );
+				ImGui::SliderFloat("Anisotropy Z", &m_settings.m_anisotropyDirection[2], -1.0f, 1.0f );
+				ImGui::SliderFloat("Thickness", &m_settings.m_thickness, 0.0f, 1.0f );
+				ImGui::ColorEdit3("Subsurface Color", m_settings.m_subsurfaceColor);
+				ImGui::SliderFloat("Subsurface Power", &m_settings.m_subsurfacePower, 0.0f, 1.0f );
+				ImGui::ColorEdit3("Sheen Color", m_settings.m_sheenColor);
+				ImGui::ColorEdit3("Specular Color", m_settings.m_specularColor);
+				ImGui::SliderFloat("Glossiness", &m_settings.m_glossiness, 0.0f, 1.0f );
+
+				ImGui::SliderFloat("Specular AntiAliasing Variance", &m_settings.m_specularAntiAliasingVariance, 0.0f, 1.0f );
+				ImGui::SliderFloat("Specular AntiAliasing Threshold", &m_settings.m_specularAntiAliasingThreshold, 0.0f, 1.0f );
+				ImGui::Checkbox("Double Sided", &m_settings.m_doubleSided);
+				
 				ImGui::PopItemWidth();
 				ImGui::Unindent();
-#endif
-
-			}
-
-
-//			ImGui::ColorWheel("Diffuse:", &m_settings.m_rgbDiff[0], 0.7f);
-			ImGui::Separator();
-			if ( isBunny )
-			{
-//				ImGui::ColorWheel("Specular:", &m_settings.m_rgbSpec[0], 0.7f);
 			}
 
 			ImGui::End();
@@ -690,7 +696,11 @@ public:
 				m_uniforms.m_frameParams[ii] = 0.0f;
 			
 			//xyz - directional light color, .w - light intensity premultiplied with exposure
-			bx::memCopy(m_uniforms.m_lightColorIntensity, m_settings.m_lightColorIntensity, 4*sizeof(float));
+			m_uniforms.m_lightColorIntensity[0] = m_settings.m_lightColor[0];
+			m_uniforms.m_lightColorIntensity[1] = m_settings.m_lightColor[1];
+			m_uniforms.m_lightColorIntensity[2] = m_settings.m_lightColor[2];
+			m_uniforms.m_lightColorIntensity[3] = m_settings.m_lightIntensity * m_settings.m_exposure;
+
 			m_uniforms.m_sun[0] = bx::cos(m_settings.m_sunRadius);
 			m_uniforms.m_sun[1] = bx::sin(m_settings.m_sunRadius);
 			m_uniforms.m_sun[2] = 1.0f / (bx::cos(m_settings.m_sunRadius * m_settings.m_sunHaloSize) - bx::cos(m_settings.m_sunRadius));
@@ -712,12 +722,12 @@ public:
 	
 			m_uniforms.m_specularAntiAliasingVariance = m_settings.m_specularAntiAliasingVariance;
 			m_uniforms.m_specularAntiAliasingThreshold = m_settings.m_specularAntiAliasingThreshold;
-			m_uniforms.m_maskThreshold = m_settings.m_maskThreshold;
 			m_uniforms.m_doubleSided = m_settings.m_doubleSided ? 1.0f : 0.0f;
 
 			for(uint32_t ii=0; ii<Uniforms::MaterialNumVec4*4; ++ii)
 				m_uniforms.m_materialParams[ii] = 1.0f;
 
+			//todo: convert colors from srgb to linear
 			bx::memCopy(m_uniforms.m_baseColor, m_settings.m_baseColor, 4*sizeof(float));
 			m_uniforms.m_roughness = m_settings.m_roughness;
 			m_uniforms.m_metallic = m_settings.m_metallic;
