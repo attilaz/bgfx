@@ -38,9 +38,11 @@ void main()
 	//v_worldNormal = output.worldNormal;
 	//v_worldTangent = output.worldTangent;
 	//v_worldBitangent = output.worldBitangent;
-	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal);
-	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent);
-	v_worldBitangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_bitangent);
+
+	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal * 2.0 - 1.0);
+	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent * 2.0 - 1.0);
+	v_worldBitangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_bitangent * 2.0 - 1.0);
+
 	v_lightSpacePosition = output.lightSpacePosition;
 	gl_Position = output.clipPosition;
 }

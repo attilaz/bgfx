@@ -820,8 +820,8 @@ public:
 							, scale/xend
 							, scale/xend
 							, 0.0f
-							, 0.0f
-							, 0.0f
+							, xx * 0.5f
+							, yy * 0.5f
 							, 0.0f      + (xx/xend)*spacing - (1.0f + (scale-1.0f)*0.5f - 1.0f/xend)
 							, yAdj/yend + (yy/yend)*spacing - (1.0f + (scale-1.0f)*0.5f - 1.0f/yend)
 							, 0.0f
@@ -829,7 +829,11 @@ public:
 
 						m_uniforms.m_roughness   =        xx*(1.0f/xend);
 						m_uniforms.m_reflectance = (yend-yy)*(1.0f/yend);
-						
+
+						float mtxCof[4 * 4];
+						bx::mtxCofactor(mtxCof, mtx);
+						bx::memCopy(m_uniforms.m_worldFromModelNormalMatrix, mtxCof, 3 * 4 * sizeof(float));
+
 						m_uniforms.submit();
 
 						bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);

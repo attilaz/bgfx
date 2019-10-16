@@ -70,7 +70,7 @@ uniform float4 u_frameUniforms[21];
 
 
 uniform float4 u_objectUniforms[6];
-#define u_objectUniforms_worldFromModelNormalMatrix mat3(u_objectUniforms[0].xyz,u_objectUniforms[1].xyz,u_objectUniforms[2].xyz)
+#define u_objectUniforms_worldFromModelNormalMatrix transpose(mat3(u_objectUniforms[0].xyz,u_objectUniforms[1].xyz,u_objectUniforms[2].xyz))
 #define u_objectUniforms_morphWeights u_objectUniforms[3]
 #define u_objectUniforms_skinningEnabled int(u_objectUniforms[4].x)
 #define u_objectUniforms_morphingEnabled int(u_objectUniforms[4].y)

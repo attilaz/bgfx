@@ -28,7 +28,7 @@ uniform vec4 u_materialInput[8];
 //#define SHADING_MODEL_UNLIT
 
 //#define MATERIAL_HAS_SUBSURFACE_COLOR
-#define MATERIAL_HAS_NORMAL
+//#define MATERIAL_HAS_NORMAL
 //#define MATERIAL_HAS_CLEAR_COAT
 //#define MATERIAL_HAS_CLEAR_COAT_NORMAL
 //#define MATERIAL_HAS_ANISOTROPY
@@ -103,7 +103,7 @@ void main() {
 #endif
 
 #if defined(MATERIAL_HAS_NORMAL)
-	material.normal = vec3(0.0,0.0,1.0);
+	material.normal = v_worldNormal;
 #endif
 #if defined(MATERIAL_HAS_CLEAR_COAT) && defined(MATERIAL_HAS_CLEAR_COAT_NORMAL)
 	material.clearCoatNormal = vec3(0.0,0.0,1.0);
