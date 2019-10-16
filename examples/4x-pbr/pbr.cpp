@@ -820,8 +820,8 @@ public:
 							, scale/xend
 							, scale/xend
 							, 0.0f
-							, xx * 0.5f
-							, yy * 0.5f
+							, 0.0f
+							, 0.0f
 							, 0.0f      + (xx/xend)*spacing - (1.0f + (scale-1.0f)*0.5f - 1.0f/xend)
 							, yAdj/yend + (yy/yend)*spacing - (1.0f + (scale-1.0f)*0.5f - 1.0f/yend)
 							, 0.0f

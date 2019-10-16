@@ -2,23 +2,23 @@ $input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_light
 
 #include "../common/common.sh"
 
-uniform vec4 u_materialInput[8];
+uniform vec4 u_materialUniforms[8];
 
-#define u_materialInput_baseColor u_materialInput[0]
-#define u_materialInput_roughness u_materialInput[1].x
-#define u_materialInput_metallic u_materialInput[1].y
-#define u_materialInput_reflectance u_materialInput[1].z
-#define u_materialInput_emissive u_materialInput[2]
-#define u_materialInput_clearCoat u_materialInput[3].x
-#define u_materialInput_clearCoatRoughness u_materialInput[3].y
-#define u_materialInput_anisotropy u_materialInput[3].z
-#define u_materialInput_anisotropyDirection u_materialInput[4].xyz
-#define u_materialInput_thickness u_materialInput[4].w
-#define u_materialInput_subsurfaceColor u_materialInput[5].xyz
-#define u_materialInput_subsurfacePower u_materialInput[5].w
-#define u_materialInput_sheenColor u_materialInput[6].xyz
-#define u_materialInput_specularColor u_materialInput[7].xyz
-#define u_materialInput_glossiness u_materialInput[7].w
+#define u_materialInput_baseColor u_materialUniforms[0]
+#define u_materialInput_roughness u_materialUniforms[1].x
+#define u_materialInput_metallic u_materialUniforms[1].y
+#define u_materialInput_reflectance u_materialUniforms[1].z
+#define u_materialInput_emissive u_materialUniforms[2]
+#define u_materialInput_clearCoat u_materialUniforms[3].x
+#define u_materialInput_clearCoatRoughness u_materialUniforms[3].y
+#define u_materialInput_anisotropy u_materialUniforms[3].z
+#define u_materialInput_anisotropyDirection u_materialUniforms[4].xyz
+#define u_materialInput_thickness u_materialUniforms[4].w
+#define u_materialInput_subsurfaceColor u_materialUniforms[5].xyz
+#define u_materialInput_subsurfacePower u_materialUniforms[5].w
+#define u_materialInput_sheenColor u_materialUniforms[6].xyz
+#define u_materialInput_specularColor u_materialUniforms[7].xyz
+#define u_materialInput_glossiness u_materialUniforms[7].w
 
 #define HAS_ATTRIBUTE_TANGENTS
 
