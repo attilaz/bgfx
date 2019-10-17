@@ -60,9 +60,9 @@ void main() {
 	FragmentStageInputs stageIn;
 	initFragmentStageInputs(stageIn);
 	stageIn.worldPosition = v_worldPosition;
-	stageIn.worldNormal = v_worldNormal;
-	stageIn.worldTangent = v_worldTangent;
-	stageIn.worldBitangent = v_worldBitangent;
+	stageIn.worldNormal = normalize(v_worldNormal);
+	stageIn.worldTangent = normalize(v_worldTangent);
+	stageIn.worldBitangent = normalize(v_worldBitangent);
 	stageIn.fragCoord = gl_FragCoord;
 	stageIn.frontFacing = gl_FrontFacing;
 

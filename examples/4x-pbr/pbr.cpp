@@ -792,8 +792,8 @@ public:
 				// Submit bunny.
 				float mtx[16];
 				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, bx::kPi, 0.0f, 0.0f, -0.80f, 0.0f);
-				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG);
-				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
+				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG, BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex, BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setTexture(5, s_texSsao, m_texSsao);
 				
 				float mtxCof[4*4];
