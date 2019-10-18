@@ -373,7 +373,7 @@ struct Settings
 		m_lightColor[0] = 1.0f;
 		m_lightColor[1] = 1.0f;
 		m_lightColor[2] = 1.0f;
-		m_lightIntensity = 1.0f;
+		m_lightIntensity = 100000.0f;
 		// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
 		m_sunRadius = 1.0f;
 		m_sunHaloSize = 1.0f;
@@ -627,7 +627,7 @@ public:
 				ImGui::EndTabBar();
 			}
 
-			ImGui::SliderFloat("Ibl Luminance", &m_settings.m_iblLuminance, 0.0f, 1.0f);
+			ImGui::SliderFloat("Ibl Luminance", &m_settings.m_iblLuminance, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
 			ImGui::Unindent();
 
@@ -639,7 +639,7 @@ public:
 			ImGui::SliderFloat("Direction Y", &m_settings.m_lightDirection[1], -1.0f, 1.0f);
 			ImGui::SliderFloat("Direction Z", &m_settings.m_lightDirection[2], -1.0f, 1.0f);
 			ImGui::ColorPicker3("Color", m_settings.m_lightColor);
-			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100.0f, "%.2f", 2.0f);
+			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
 			ImGui::SliderFloat("Radius", &m_settings.m_sunRadius, 0.0f, 100.0f);
 			ImGui::SliderFloat("Halo Size", &m_settings.m_sunHaloSize, 0.0f, 100.0f);
@@ -653,8 +653,8 @@ public:
 			
 			
 			ImGui::SliderFloat("Aperture",& m_settings.m_cameraAperture, MIN_APERTURE, MAX_APERTURE);
-			ImGui::SliderFloat("Shutter Speed",& m_settings.m_cameraShutterSpeed, MIN_SHUTTER_SPEED, MAX_SHUTTER_SPEED);
-			ImGui::SliderFloat("Sensitivity",& m_settings.m_cameraSensitivity, MIN_SENSITIVITY, MAX_SENSITIVITY);
+			ImGui::SliderFloat("Shutter Speed",& m_settings.m_cameraShutterSpeed, MIN_SHUTTER_SPEED, MAX_SHUTTER_SPEED, "%.3f", 2.0f);
+			ImGui::SliderFloat("Sensitivity",& m_settings.m_cameraSensitivity, MIN_SENSITIVITY, MAX_SENSITIVITY, "%.3f", 2.0f);
 			ImGui::Unindent();
 			
 			ImGui::PopItemWidth();
