@@ -358,6 +358,13 @@ struct Mouse
 	int32_t m_scroll;
 	int32_t m_scrollPrev;
 };
+	
+#define MIN_APERTURE (0.5f)
+#define MAX_APERTURE (64.0f)
+#define MIN_SHUTTER_SPEED (1.0f / 25000.0f)
+#define MAX_SHUTTER_SPEED (60.0f)
+#define MIN_SENSITIVITY (10.0f)
+#define MAX_SENSITIVITY (204800.0f)
 
 struct Settings
 {
@@ -376,10 +383,11 @@ struct Settings
 		m_lightDirection[1] = -1.0f;
 		m_lightDirection[2] = 0.0f;
 		
-		m_iblLuminance = 1.0f;
-		m_exposure = 1.0f;
-		m_ev100 = 1.0f;
-		
+		m_iblLuminance = 50000.0f;
+		m_cameraAperture = 16.0f;
+		m_cameraShutterSpeed = 1.0f / 125.0f;
+		m_cameraSensitivity = 100.0f;
+
 		m_specularAntiAliasingVariance = 0.0f;
 		m_specularAntiAliasingThreshold = 0.0f;
 		m_doubleSided = 0.0f;
@@ -418,8 +426,32 @@ struct Settings
 	float m_lightDirection[3];
 	
 	float m_iblLuminance;
-	float m_exposure;
-	float m_ev100;
+	float m_cameraAperture;
+	float m_cameraShutterSpeed;
+	float m_cameraSensitivity;
+
+	/** Sets this camera's exposure (default is f/16, 1/125s, 100 ISO)
+	 *
+	 * The exposure ultimately controls the scene's brightness, just like with a real camera.
+	 * The default values provide adequate exposure for a camera placed outdoors on a sunny day
+	 * with the sun at the zenith.
+	 *
+	 * @param aperture      Aperture in f-stops, clamped between 0.5 and 64.
+	 *                      A lower \p aperture value *increases* the exposure, leading to
+	 *                      a brighter scene. Realistic values are between 0.95 and 32.
+	 *
+	 * @param shutterSpeed  Shutter speed in seconds, clamped between 1/25,000 and 60.
+	 *                      A lower shutter speed increases the exposure. Realistic values are
+	 *                      between 1/8000 and 30.
+	 *
+	 * @param sensitivity   Sensitivity in ISO, clamped between 10 and 204,800.
+	 *                      A higher \p sensitivity increases the exposure. Realistic values are
+	 *                      between 50 and 25600.
+	 *
+	 * @note
+	 * With the default parameters, the scene must contain at least one Light of intensity
+	 * similar to the sun (e.g.: a 100,000 lux directional light).
+	 */
 	
 	float m_specularAntiAliasingVariance;
 	float m_specularAntiAliasingThreshold;
@@ -618,8 +650,11 @@ public:
 			ImGui::Separator();
 			ImGui::Text("Camera:");
 			ImGui::Indent();
-			ImGui::SliderFloat("Exposure",& m_settings.m_exposure, -4.0f, 4.0f);
-			ImGui::SliderFloat("Ev100",& m_settings.m_ev100, 0.0f, 1.0f);
+			
+			
+			ImGui::SliderFloat("Aperture",& m_settings.m_cameraAperture, MIN_APERTURE, MAX_APERTURE);
+			ImGui::SliderFloat("Shutter Speed",& m_settings.m_cameraShutterSpeed, MIN_SHUTTER_SPEED, MAX_SHUTTER_SPEED);
+			ImGui::SliderFloat("Sensitivity",& m_settings.m_cameraSensitivity, MIN_SENSITIVITY, MAX_SENSITIVITY);
 			ImGui::Unindent();
 			
 			ImGui::PopItemWidth();
@@ -688,6 +723,8 @@ public:
 
 			imguiEndFrame();
 			
+			float ev100 = bx::log2((m_settings.m_cameraAperture * m_settings.m_cameraAperture) / m_settings.m_cameraShutterSpeed * 100.0 / m_settings.m_cameraSensitivity);
+			float exposure = 1.0 / (bx::pow(2.0, ev100) * 1.2);
 			
 			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
 				m_uniforms.m_frameParams[ii] = 0.0f;
@@ -696,7 +733,7 @@ public:
 			m_uniforms.m_lightColorIntensity[0] = m_settings.m_lightColor[0];
 			m_uniforms.m_lightColorIntensity[1] = m_settings.m_lightColor[1];
 			m_uniforms.m_lightColorIntensity[2] = m_settings.m_lightColor[2];
-			m_uniforms.m_lightColorIntensity[3] = m_settings.m_lightIntensity * m_settings.m_exposure;
+			m_uniforms.m_lightColorIntensity[3] = m_settings.m_lightIntensity * exposure;
 
 			m_uniforms.m_sun[0] = bx::cos(m_settings.m_sunRadius);
 			m_uniforms.m_sun[1] = bx::sin(m_settings.m_sunRadius);
@@ -705,9 +742,9 @@ public:
 
 			bx::memCopy(m_uniforms.m_lightDirection, m_settings.m_lightDirection, 3 * sizeof(float));
 			
-			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance;
-			m_uniforms.m_exposure = m_settings.m_exposure;
-			m_uniforms.m_ev100 = m_settings.m_ev100;
+			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance * exposure;
+			m_uniforms.m_exposure = exposure;
+			m_uniforms.m_ev100 = ev100;
 			m_uniforms.m_iblMaxMipLevel[0] = m_lightProbes[m_currentLightProbe].m_texNumMips;
 			m_uniforms.m_iblMaxMipLevel[1] = 1 << m_lightProbes[m_currentLightProbe].m_texNumMips;
 			
