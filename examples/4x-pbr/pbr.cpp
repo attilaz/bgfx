@@ -379,8 +379,8 @@ struct Settings
 		m_sunHaloSize = 1.0f;
 		m_sunHaloFalloff = 1.0f;
 		
-		m_lightElevation = 45.0f;
-		m_lightAzimuth = 70.0f;
+		m_lightElevation = 70.0f;
+		m_lightAzimuth = 45.0f;
 		
 		m_iblLuminance = 50000.0f;
 		m_cameraAperture = 16.0f;
@@ -635,8 +635,8 @@ public:
 			ImGui::Text("Directional light:");
 			ImGui::Indent();
 			
-			ImGui::SliderFloat("Elevation", &m_settings.m_lightElevation, 0.0f, 360.0f);
-			ImGui::SliderFloat("Azimuth", &m_settings.m_lightAzimuth, 0.0f, 90.0f);
+			ImGui::SliderFloat("Elevation", &m_settings.m_lightElevation, 0.0f, 90.0f);
+			ImGui::SliderFloat("Azimuth", &m_settings.m_lightAzimuth, 0.0f, 360.0f);
 			ImGui::ColorEdit3("Color", m_settings.m_lightColor);
 			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
