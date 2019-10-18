@@ -379,9 +379,8 @@ struct Settings
 		m_sunHaloSize = 1.0f;
 		m_sunHaloFalloff = 1.0f;
 		
-		m_lightDirection[0] = 0.0f;
-		m_lightDirection[1] = -1.0f;
-		m_lightDirection[2] = 0.0f;
+		m_lightElevation = 45.0f;
+		m_lightAzimuth = 70.0f;
 		
 		m_iblLuminance = 50000.0f;
 		m_cameraAperture = 16.0f;
@@ -423,7 +422,8 @@ struct Settings
 	float m_sunRadius;
 	float m_sunHaloSize;
 	float m_sunHaloFalloff;
-	float m_lightDirection[3];
+	float m_lightElevation;
+	float m_lightAzimuth;
 	
 	float m_iblLuminance;
 	float m_cameraAperture;
@@ -588,11 +588,11 @@ public:
 			showExampleDialog(this);
 
 			ImGui::SetNextWindowPos(
-				  ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
+				  ImVec2(m_width - m_width / 4.5f - 10.0f, 10.0f)
 				, ImGuiCond_FirstUseEver
 				);
 			ImGui::SetNextWindowSize(
-				  ImVec2(m_width / 5.0f, m_height - 20.0f)
+				  ImVec2(m_width / 4.5f, m_height - 20.0f)
 				, ImGuiCond_FirstUseEver
 				);
 			ImGui::Begin("Settings"
@@ -627,7 +627,7 @@ public:
 				ImGui::EndTabBar();
 			}
 
-			ImGui::SliderFloat("Ibl Luminance", &m_settings.m_iblLuminance, 0.0f, 100000.0f, "%.2f", 2.0f);
+			ImGui::SliderFloat("Luminance", &m_settings.m_iblLuminance, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
 			ImGui::Unindent();
 
@@ -635,10 +635,9 @@ public:
 			ImGui::Text("Directional light:");
 			ImGui::Indent();
 			
-			ImGui::SliderFloat("Direction X", &m_settings.m_lightDirection[0], -1.0f, 1.0f);
-			ImGui::SliderFloat("Direction Y", &m_settings.m_lightDirection[1], -1.0f, 1.0f);
-			ImGui::SliderFloat("Direction Z", &m_settings.m_lightDirection[2], -1.0f, 1.0f);
-			ImGui::ColorPicker3("Color", m_settings.m_lightColor);
+			ImGui::SliderFloat("Elevation", &m_settings.m_lightElevation, 0.0f, 360.0f);
+			ImGui::SliderFloat("Azimuth", &m_settings.m_lightAzimuth, 0.0f, 90.0f);
+			ImGui::ColorEdit3("Color", m_settings.m_lightColor);
 			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
 			ImGui::SliderFloat("Radius", &m_settings.m_sunRadius, 0.0f, 100.0f);
@@ -687,8 +686,6 @@ public:
 			else
 			{
 				ImGui::Separator();
-
-				ImGui::Separator();
 				ImGui::Text("Material:");
 				ImGui::Indent();
 				ImGui::PushItemWidth(130.0f);
@@ -729,7 +726,6 @@ public:
 			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
 				m_uniforms.m_frameParams[ii] = 0.0f;
 			
-			//xyz - directional light color, .w - light intensity premultiplied with exposure
 			m_uniforms.m_lightColorIntensity[0] = m_settings.m_lightColor[0];
 			m_uniforms.m_lightColorIntensity[1] = m_settings.m_lightColor[1];
 			m_uniforms.m_lightColorIntensity[2] = m_settings.m_lightColor[2];
@@ -740,7 +736,11 @@ public:
 			m_uniforms.m_sun[2] = 1.0f / (bx::cos(m_settings.m_sunRadius * m_settings.m_sunHaloSize) - bx::cos(m_settings.m_sunRadius));
 			m_uniforms.m_sun[3] = m_settings.m_sunHaloFalloff;
 
-			bx::memCopy(m_uniforms.m_lightDirection, m_settings.m_lightDirection, 3 * sizeof(float));
+			float el = m_settings.m_lightElevation * (bx::kPi/180.0f);
+			float az = m_settings.m_lightAzimuth   * (bx::kPi/180.0f);
+			m_uniforms.m_lightDirection[0] = bx::cos(el)*bx::cos(az);
+			m_uniforms.m_lightDirection[2] = bx::cos(el)*bx::sin(az);
+			m_uniforms.m_lightDirection[1] = bx::sin(el);
 			
 			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance * exposure;
 			m_uniforms.m_exposure = exposure;
@@ -753,9 +753,6 @@ public:
 			for(uint32_t ii=0; ii<Uniforms::ObjectNumVec4*4; ++ii)
 				m_uniforms.m_objectParams[ii] = 0.0f;
 			
-			m_uniforms.m_skinningEnabled = 0.0f;
-			m_uniforms.m_morphingEnabled = 0.0f;
-	
 			m_uniforms.m_specularAntiAliasingVariance = m_settings.m_specularAntiAliasingVariance;
 			m_uniforms.m_specularAntiAliasingThreshold = m_settings.m_specularAntiAliasingThreshold;
 			m_uniforms.m_doubleSided = m_settings.m_doubleSided ? 1.0f : 0.0f;
