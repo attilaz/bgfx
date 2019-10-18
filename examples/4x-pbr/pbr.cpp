@@ -139,9 +139,11 @@ struct LightProbe
 	void load(const char* _name, const float* _sh)
 	{
 		char filePath[512];
-
 		bx::snprintf(filePath, BX_COUNTOF(filePath), "textures/%s.ktx", _name);
-		m_tex = loadTexture(filePath, BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP|BGFX_SAMPLER_W_CLAMP);
+
+		bgfx::TextureInfo info;
+		m_tex = loadTexture(filePath, BGFX_SAMPLER_U_CLAMP|BGFX_SAMPLER_V_CLAMP|BGFX_SAMPLER_W_CLAMP, 0, &info);
+		m_texNumMips = info.numMips;
 
 		bx::memCopy(m_sh, _sh, sizeof(m_sh));
 	}
@@ -152,6 +154,7 @@ struct LightProbe
 	}
 
 	bgfx::TextureHandle m_tex;
+	int					m_texNumMips;
 	float               m_sh[9][4];
 };
 
@@ -376,8 +379,6 @@ struct Settings
 		m_iblLuminance = 1.0f;
 		m_exposure = 1.0f;
 		m_ev100 = 1.0f;
-		m_iblMaxMipLevel[0] = 10.0f;
-		m_iblMaxMipLevel[1] = 1.0f;
 		
 		m_specularAntiAliasingVariance = 0.0f;
 		m_specularAntiAliasingThreshold = 0.0f;
@@ -419,7 +420,6 @@ struct Settings
 	float m_iblLuminance;
 	float m_exposure;
 	float m_ev100;
-	float m_iblMaxMipLevel[2];
 	
 	float m_specularAntiAliasingVariance;
 	float m_specularAntiAliasingThreshold;
@@ -595,9 +595,6 @@ public:
 				ImGui::EndTabBar();
 			}
 
-			ImGui::SliderFloat("Max Mip Level", &m_settings.m_iblMaxMipLevel[0], 0.0f, 10.1f);
-			ImGui::SliderFloat("Max Mip ???", &m_settings.m_iblMaxMipLevel[1], 0.0f, 10.1f);
-
 			ImGui::SliderFloat("Ibl Luminance", &m_settings.m_iblLuminance, 0.0f, 1.0f);
 			
 			ImGui::Unindent();
@@ -711,8 +708,10 @@ public:
 			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance;
 			m_uniforms.m_exposure = m_settings.m_exposure;
 			m_uniforms.m_ev100 = m_settings.m_ev100;
-			m_uniforms.m_iblMaxMipLevel[0] = m_settings.m_iblMaxMipLevel[0];
-			m_uniforms.m_iblMaxMipLevel[1] = m_settings.m_iblMaxMipLevel[1];
+			m_uniforms.m_iblMaxMipLevel[0] = m_lightProbes[m_currentLightProbe].m_texNumMips;
+			m_uniforms.m_iblMaxMipLevel[1] = 1 << m_lightProbes[m_currentLightProbe].m_texNumMips;
+			
+			bx::memCopy(m_uniforms.m_iblSH, m_lightProbes[m_currentLightProbe].m_sh, sizeof(m_lightProbes[m_currentLightProbe].m_sh));
 
 			for(uint32_t ii=0; ii<Uniforms::ObjectNumVec4*4; ++ii)
 				m_uniforms.m_objectParams[ii] = 0.0f;
@@ -743,8 +742,6 @@ public:
 			bx::memCopy(m_uniforms.m_sheenColor, m_settings.m_sheenColor, 3*sizeof(float));
 			bx::memCopy(m_uniforms.m_specularColor, m_settings.m_specularColor, 3*sizeof(float));
 			m_uniforms.m_glossiness = m_settings.m_glossiness;
-			
-			bx::memCopy(m_uniforms.m_iblSH, m_lightProbes[m_currentLightProbe].m_sh, sizeof(m_lightProbes[m_currentLightProbe].m_sh));
 			
 			int64_t now = bx::getHPCounter();
 			static int64_t last = now;
