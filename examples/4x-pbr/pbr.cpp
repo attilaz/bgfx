@@ -709,11 +709,23 @@ public:
 
 				ImGui::Indent();
 				ImGui::PushItemWidth(130.0f);
-				
+
 				ImGui::ColorEdit4("Base Color", m_settings.m_baseColor);
-				ImGui::SliderFloat("Roughness", &m_settings.m_roughness, 0.0f, 1.0f );
-				ImGui::SliderFloat("Metallic", &m_settings.m_metallic, 0.0f, 1.0f );
-				ImGui::SliderFloat("Reflectance", &m_settings.m_reflectance, 0.0f, 1.0f );
+				if ( m_settings.m_shadingModel != SHADING_MODEL_SPECULAR)
+				{
+					ImGui::SliderFloat("Roughness", &m_settings.m_roughness, 0.0f, 1.0f );
+				}
+				if ( m_settings.m_shadingModel != SHADING_MODEL_CLOTH &&
+					m_settings.m_shadingModel != SHADING_MODEL_SPECULAR )
+				{
+					ImGui::SliderFloat("Metallic", &m_settings.m_metallic, 0.0f, 1.0f );
+					ImGui::SliderFloat("Reflectance", &m_settings.m_reflectance, 0.0f, 1.0f );
+				}
+				if ( m_settings.m_shadingModel == SHADING_MODEL_SPECULAR)
+				{
+					ImGui::ColorEdit3("Specular Color", m_settings.m_specularColor);
+					ImGui::SliderFloat("Glossiness", &m_settings.m_glossiness, 0.0f, 1.0f );
+				}
 				ImGui::ColorEdit4("Emissive", m_settings.m_emissive);
 				ImGui::SliderFloat("Clear Coat", &m_settings.m_clearCoat, 0.0f, 1.0f );
 				ImGui::SliderFloat("Clear Coat Roughness", &m_settings.m_clearCoatRoughness, 0.0f, 1.0f );
@@ -721,12 +733,17 @@ public:
 				ImGui::SliderFloat("Anisotropy X", &m_settings.m_anisotropyDirection[0], -1.0f, 1.0f );
 				ImGui::SliderFloat("Anisotropy Y", &m_settings.m_anisotropyDirection[1], -1.0f, 1.0f );
 				ImGui::SliderFloat("Anisotropy Z", &m_settings.m_anisotropyDirection[2], -1.0f, 1.0f );
-				ImGui::SliderFloat("Thickness", &m_settings.m_thickness, 0.0f, 1.0f );
-				ImGui::ColorEdit3("Subsurface Color", m_settings.m_subsurfaceColor);
-				ImGui::SliderFloat("Subsurface Power", &m_settings.m_subsurfacePower, 0.0f, 1.0f );
-				ImGui::ColorEdit3("Sheen Color", m_settings.m_sheenColor);
-				ImGui::ColorEdit3("Specular Color", m_settings.m_specularColor);
-				ImGui::SliderFloat("Glossiness", &m_settings.m_glossiness, 0.0f, 1.0f );
+				if ( m_settings.m_shadingModel == SHADING_MODEL_SUBSURFACE)
+				{
+					ImGui::SliderFloat("Thickness", &m_settings.m_thickness, 0.0f, 1.0f );
+					ImGui::ColorEdit3("Subsurface Color", m_settings.m_subsurfaceColor);
+					ImGui::SliderFloat("Subsurface Power", &m_settings.m_subsurfacePower, 0.0f, 1.0f );
+				}
+				if ( m_settings.m_shadingModel == SHADING_MODEL_CLOTH)
+				{
+					ImGui::ColorEdit3("Sheen Color", m_settings.m_sheenColor);
+					ImGui::ColorEdit3("Subsurface Color", m_settings.m_subsurfaceColor);
+				}
 
 				ImGui::SliderFloat("Specular AntiAliasing Variance", &m_settings.m_specularAntiAliasingVariance, 0.0f, 1.0f );
 				ImGui::SliderFloat("Specular AntiAliasing Threshold", &m_settings.m_specularAntiAliasingThreshold, 0.0f, 1.0f );
