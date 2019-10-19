@@ -365,11 +365,26 @@ struct Mouse
 #define MAX_SHUTTER_SPEED (60.0f)
 #define MIN_SENSITIVITY (10.0f)
 #define MAX_SENSITIVITY (204800.0f)
+	
+#define SHADING_MODEL_METALLIC 		(0)
+#define SHADING_MODEL_SPECULAR 		(1)
+#define SHADING_MODEL_CLOTH 		(2)
+#define SHADING_MODEL_SUBSURFACE 	(3)
+
+static const char* s_ptShadingModels[]
+{
+	"Metallic",
+	"Specular",
+	"Cloth",
+	"Subsurface",
+};
 
 struct Settings
 {
 	Settings()
 	{
+		m_shadingModel = SHADING_MODEL_METALLIC;
+		
 		m_lightColor[0] = 1.0f;
 		m_lightColor[1] = 1.0f;
 		m_lightColor[2] = 1.0f;
@@ -456,6 +471,8 @@ struct Settings
 	float m_specularAntiAliasingVariance;
 	float m_specularAntiAliasingThreshold;
 	bool m_doubleSided;
+	
+	int   m_shadingModel;
 	
 	float m_baseColor[4];
 	float m_roughness;
@@ -687,6 +704,9 @@ public:
 			{
 				ImGui::Separator();
 				ImGui::Text("Material:");
+				
+				ImGui::Combo("", (int*)&m_settings.m_shadingModel, s_ptShadingModels, BX_COUNTOF(s_ptShadingModels) );
+
 				ImGui::Indent();
 				ImGui::PushItemWidth(130.0f);
 				

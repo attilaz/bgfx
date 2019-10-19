@@ -106,7 +106,7 @@ void main() {
 	material.normal = v_worldNormal;
 #endif
 #if defined(MATERIAL_HAS_CLEAR_COAT) && defined(MATERIAL_HAS_CLEAR_COAT_NORMAL)
-	material.clearCoatNormal = vec3(0.0,0.0,1.0);
+	material.clearCoatNormal = v_worldNormal;
 #endif
 
 	gl_FragColor = evaluate(material, stageIn);
