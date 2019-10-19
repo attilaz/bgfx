@@ -322,6 +322,14 @@ struct Camera
 	float m_orbit[2];
 };
 
+	
+void sRGBToLinear(float* _out, float* _in)
+{
+	_out[0] = bx::toLinear(_in[0]);
+	_out[1] = bx::toLinear(_in[1]);
+	_out[2] = bx::toLinear(_in[2]);
+}
+	
 struct Mouse
 {
 	Mouse()
@@ -711,15 +719,15 @@ public:
 				ImGui::PushItemWidth(130.0f);
 
 				ImGui::ColorEdit4("Base Color", m_settings.m_baseColor);
-				if ( m_settings.m_shadingModel != SHADING_MODEL_SPECULAR)
-				{
-					ImGui::SliderFloat("Roughness", &m_settings.m_roughness, 0.0f, 1.0f );
-				}
 				if ( m_settings.m_shadingModel != SHADING_MODEL_CLOTH &&
 					m_settings.m_shadingModel != SHADING_MODEL_SPECULAR )
 				{
 					ImGui::SliderFloat("Metallic", &m_settings.m_metallic, 0.0f, 1.0f );
 					ImGui::SliderFloat("Reflectance", &m_settings.m_reflectance, 0.0f, 1.0f );
+				}
+				if ( m_settings.m_shadingModel != SHADING_MODEL_SPECULAR)
+				{
+					ImGui::SliderFloat("Roughness", &m_settings.m_roughness, 0.0f, 1.0f );
 				}
 				if ( m_settings.m_shadingModel == SHADING_MODEL_SPECULAR)
 				{
@@ -763,9 +771,7 @@ public:
 			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
 				m_uniforms.m_frameParams[ii] = 0.0f;
 			
-			m_uniforms.m_lightColorIntensity[0] = m_settings.m_lightColor[0];
-			m_uniforms.m_lightColorIntensity[1] = m_settings.m_lightColor[1];
-			m_uniforms.m_lightColorIntensity[2] = m_settings.m_lightColor[2];
+			sRGBToLinear(m_uniforms.m_lightColorIntensity, m_settings.m_lightColor);
 			m_uniforms.m_lightColorIntensity[3] = m_settings.m_lightIntensity * exposure;
 
 			m_uniforms.m_sun[0] = bx::cos(m_settings.m_sunRadius);
@@ -797,21 +803,22 @@ public:
 			for(uint32_t ii=0; ii<Uniforms::MaterialNumVec4*4; ++ii)
 				m_uniforms.m_materialParams[ii] = 1.0f;
 
-			//todo: convert colors from srgb to linear
-			bx::memCopy(m_uniforms.m_baseColor, m_settings.m_baseColor, 4*sizeof(float));
+			sRGBToLinear(m_uniforms.m_baseColor, m_settings.m_baseColor);
+			m_uniforms.m_baseColor[3] = m_settings.m_baseColor[3];
 			m_uniforms.m_roughness = m_settings.m_roughness;
 			m_uniforms.m_metallic = m_settings.m_metallic;
 			m_uniforms.m_reflectance = m_settings.m_reflectance;
-			bx::memCopy(m_uniforms.m_emissive, m_settings.m_emissive, 4*sizeof(float));
+			sRGBToLinear(m_uniforms.m_emissive, m_settings.m_emissive);
+			m_uniforms.m_emissive[3] = m_settings.m_emissive[3];
 			m_uniforms.m_clearCoat = m_settings.m_clearCoat;
 			m_uniforms.m_clearCoatRoughness = m_settings.m_clearCoatRoughness;
 			m_uniforms.m_anisotropy = m_settings.m_anisotropy;
 			bx::memCopy(m_uniforms.m_anisotropyDirection, m_settings.m_anisotropyDirection, 3*sizeof(float));
 			m_uniforms.m_thickness = m_settings.m_thickness;
-			bx::memCopy(m_uniforms.m_subsurfaceColor, m_settings.m_subsurfaceColor, 3*sizeof(float));
+			sRGBToLinear(m_uniforms.m_subsurfaceColor, m_settings.m_subsurfaceColor);
 			m_uniforms.m_subsurfacePower = m_settings.m_subsurfacePower;
-			bx::memCopy(m_uniforms.m_sheenColor, m_settings.m_sheenColor, 3*sizeof(float));
-			bx::memCopy(m_uniforms.m_specularColor, m_settings.m_specularColor, 3*sizeof(float));
+			sRGBToLinear(m_uniforms.m_sheenColor, m_settings.m_sheenColor);
+			sRGBToLinear(m_uniforms.m_specularColor, m_settings.m_specularColor);
 			m_uniforms.m_glossiness = m_settings.m_glossiness;
 			
 			int64_t now = bx::getHPCounter();
