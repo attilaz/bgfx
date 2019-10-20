@@ -27,14 +27,14 @@ uniform vec4 u_materialUniforms[8];
 //#define SHADING_MODEL_SUBSURFACE         
 //#define SHADING_MODEL_UNLIT
 
-#define MATERIAL_HAS_SUBSURFACE_COLOR
-#define MATERIAL_HAS_NORMAL
+//#define MATERIAL_HAS_SUBSURFACE_COLOR
+//#define MATERIAL_HAS_NORMAL  // this has strange effect
 #define MATERIAL_HAS_CLEAR_COAT
-#define MATERIAL_HAS_CLEAR_COAT_NORMAL
-#define MATERIAL_HAS_ANISOTROPY
-#define MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY
-#define MATERIAL_HAS_AMBIENT_OCCLUSION
-#define MATERIAL_HAS_CLEAR_COAT_ROUGHNESS
+//#define MATERIAL_HAS_CLEAR_COAT_NORMAL
+//#define MATERIAL_HAS_ANISOTROPY
+//#define MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY
+//#define MATERIAL_HAS_AMBIENT_OCCLUSION
+//#define MATERIAL_HAS_CLEAR_COAT_ROUGHNESS
 #define MATERIAL_HAS_EMISSIVE
 
 //lighting
@@ -110,4 +110,7 @@ void main() {
 #endif
 
 	gl_FragColor = evaluate(material, stageIn);
+
+	gl_FragColor = toAcesFilmic(gl_FragColor);
+	gl_FragColor = toGammaAccurate(gl_FragColor);
 }

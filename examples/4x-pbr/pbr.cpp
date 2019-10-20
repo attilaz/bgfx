@@ -397,10 +397,9 @@ struct Settings
 		m_lightColor[1] = 1.0f;
 		m_lightColor[2] = 1.0f;
 		m_lightIntensity = 100000.0f;
-		// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
-		m_sunRadius = 1.0f;
-		m_sunHaloSize = 1.0f;
-		m_sunHaloFalloff = 1.0f;
+		m_sunAngularRadius = 0.525f;
+		m_sunHaloSize = 10.0f;
+		m_sunHaloFalloff = 80.0f;
 		
 		m_lightElevation = 70.0f;
 		m_lightAzimuth = 45.0f;
@@ -418,7 +417,7 @@ struct Settings
 		bx::memCopy(m_baseColor, baseColor, 4*sizeof(float));
 		m_roughness = 0.0f;
 		m_metallic = 0.0f;
-		m_reflectance = 0.0f;
+		m_reflectance = 0.8f;
 		float emissive[4] = { 0.0f, 0.0f, 0.0f, 0.0f};
 		bx::memCopy(m_emissive, emissive, 4*sizeof(float));
 		m_clearCoat = 0.0f;
@@ -442,7 +441,7 @@ struct Settings
 	float m_lightColor[3];
 	float m_lightIntensity;
 	// area light: cos(radius), sin(radius), 1.0f / (cos(radius * haloSize) - cos(radius)), haloFalloff
-	float m_sunRadius;
+	float m_sunAngularRadius;
 	float m_sunHaloSize;
 	float m_sunHaloFalloff;
 	float m_lightElevation;
@@ -665,7 +664,7 @@ public:
 			ImGui::ColorEdit3("Color", m_settings.m_lightColor);
 			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
-			ImGui::SliderFloat("Radius", &m_settings.m_sunRadius, 0.0f, 100.0f);
+			ImGui::SliderFloat("Angular Radius", &m_settings.m_sunAngularRadius, 0.25f, 20.0f);
 			ImGui::SliderFloat("Halo Size", &m_settings.m_sunHaloSize, 0.0f, 100.0f);
 			ImGui::SliderFloat("Halo Falloff", &m_settings.m_sunHaloFalloff, 0.0f, 100.0f);
 
@@ -774,9 +773,9 @@ public:
 			sRGBToLinear(m_uniforms.m_lightColorIntensity, m_settings.m_lightColor);
 			m_uniforms.m_lightColorIntensity[3] = m_settings.m_lightIntensity * exposure;
 
-			m_uniforms.m_sun[0] = bx::cos(m_settings.m_sunRadius);
-			m_uniforms.m_sun[1] = bx::sin(m_settings.m_sunRadius);
-			m_uniforms.m_sun[2] = 1.0f / (bx::cos(m_settings.m_sunRadius * m_settings.m_sunHaloSize) - bx::cos(m_settings.m_sunRadius));
+			m_uniforms.m_sun[0] = bx::cos(bx::toRad(m_settings.m_sunAngularRadius));
+			m_uniforms.m_sun[1] = bx::sin(bx::toRad(m_settings.m_sunAngularRadius));
+			m_uniforms.m_sun[2] = 1.0f / (bx::cos(m_settings.m_sunAngularRadius * m_settings.m_sunHaloSize) - bx::cos(bx::toRad(m_settings.m_sunAngularRadius)));
 			m_uniforms.m_sun[3] = m_settings.m_sunHaloFalloff;
 
 			float el = m_settings.m_lightElevation * (bx::kPi/180.0f);
