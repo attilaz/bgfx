@@ -51,5 +51,3 @@ rule texturec_equirect
 pwd = ../examples/assets/meshes
 subninja ../examples/assets/meshes/meshes.ninja
 
-pwd = ../examples/assets/textures
-subninja ../examples/assets/textures/textures.ninja

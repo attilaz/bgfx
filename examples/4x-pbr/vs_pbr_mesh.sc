@@ -1,4 +1,4 @@
-$input a_position, a_normal, a_tangent, a_bitangent, a_texcoord0
+$input a_position, a_normal, a_tangent, a_texcoord0
 $output v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_lightSpacePosition
 
 #include "../common/common.sh"
@@ -39,9 +39,9 @@ void main()
 	//v_worldTangent = output.worldTangent;
 	//v_worldBitangent = output.worldBitangent;
 
-	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal * 2.0 - 1.0);
-	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent * 2.0 - 1.0);
-	v_worldBitangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_bitangent * 2.0 - 1.0);
+	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal.xyz * 2.0 - 1.0);
+	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent.xyz * 2.0 - 1.0);
+	v_worldBitangent = cross(v_worldNormal, v_worldTangent) * (a_tangent.w * 2.0 - 1.0);
 
 	v_lightSpacePosition = output.lightSpacePosition;
 	gl_Position = output.clipPosition;

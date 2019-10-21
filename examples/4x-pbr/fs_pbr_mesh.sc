@@ -12,13 +12,12 @@ uniform vec4 u_materialUniforms[8];
 #define u_materialInput_clearCoat u_materialUniforms[3].x
 #define u_materialInput_clearCoatRoughness u_materialUniforms[3].y
 #define u_materialInput_anisotropy u_materialUniforms[3].z
-#define u_materialInput_anisotropyDirection u_materialUniforms[4].xyz
-#define u_materialInput_thickness u_materialUniforms[4].w
-#define u_materialInput_subsurfaceColor u_materialUniforms[5].xyz
-#define u_materialInput_subsurfacePower u_materialUniforms[5].w
-#define u_materialInput_sheenColor u_materialUniforms[6].xyz
-#define u_materialInput_specularColor u_materialUniforms[7].xyz
-#define u_materialInput_glossiness u_materialUniforms[7].w
+#define u_materialInput_thickness u_materialUniforms[3].w
+#define u_materialInput_subsurfaceColor u_materialUniforms[4].xyz
+#define u_materialInput_subsurfacePower u_materialUniforms[4].w
+#define u_materialInput_sheenColor u_materialUniforms[5].xyz
+#define u_materialInput_specularColor u_materialUniforms[6].xyz
+#define u_materialInput_glossiness u_materialUniforms[6].w
 
 #define HAS_ATTRIBUTE_TANGENTS
 
@@ -66,6 +65,10 @@ void main() {
 	stageIn.fragCoord = gl_FragCoord;
 	stageIn.frontFacing = gl_FrontFacing;
 
+//gl_FragColor.rgb = stageIn.worldTangent.rgb;
+//gl_FragColor.a = 1.0;
+//return;
+
 	MaterialInputs material;
 	initMaterial(material);
 
@@ -84,7 +87,6 @@ void main() {
 	material.clearCoat = u_materialInput_clearCoat;
 	material.clearCoatRoughness = u_materialInput_clearCoatRoughness;
 	material.anisotropy = u_materialInput_anisotropy;
-	material.anisotropyDirection = u_materialInput_anisotropyDirection;
 #if defined(SHADING_MODEL_SUBSURFACE)
 	material.thickness = u_materialInput_thickness;
 	material.subsurfaceColor = u_materialInput_subsurfaceColor;

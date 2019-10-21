@@ -21,7 +21,7 @@ struct Uniforms
 {
 	enum { FrameNumVec4 = 21 };
 	enum { ObjectNumVec4 = 6 };
-	enum { MaterialNumVec4 = 8 };
+	enum { MaterialNumVec4 = 7 };
 
 	void init()
 	{
@@ -83,11 +83,10 @@ struct Uniforms
 			/* 0 */ struct { float m_baseColor[4]; };
 			/* 1 */ struct { float m_roughness, m_metallic, m_reflectance, m_unused4; };
 			/* 2 */ struct { float m_emissive[4]; };
-			/* 3 */ struct { float m_clearCoat, m_clearCoatRoughness, m_anisotropy, m_unused3; };
-			/* 4 */ struct { float m_anisotropyDirection[3], m_thickness; };
-			/* 5 */ struct { float m_subsurfaceColor[3], m_subsurfacePower; };
-			/* 6 */ struct { float m_sheenColor[3], m_unused5; };
-			/* 7 */ struct { float m_specularColor[3], m_glossiness; };
+			/* 3 */ struct { float m_clearCoat, m_clearCoatRoughness, m_anisotropy, m_thickness; };
+			/* 4 */ struct { float m_subsurfaceColor[3], m_subsurfacePower; };
+			/* 5 */ struct { float m_sheenColor[3], m_unused5; };
+			/* 6 */ struct { float m_specularColor[3], m_glossiness; };
 		};
 		
 		float m_materialParams[MaterialNumVec4 * 4];
@@ -423,8 +422,6 @@ struct Settings
 		m_clearCoat = 0.0f;
 		m_clearCoatRoughness = 0.0f;
 		m_anisotropy = 0.0f;
-		float anisotropyDirection[3] = { 1.0f, 1.0f, 1.0f};
-		bx::memCopy(m_anisotropyDirection, anisotropyDirection, 3*sizeof(float));
 		m_thickness = 1.0f;
 		float subsurfaceColor[3] = { 1.0f, 1.0f, 1.0f};
 		bx::memCopy(m_subsurfaceColor, subsurfaceColor, 3*sizeof(float));
@@ -489,7 +486,6 @@ struct Settings
 	float m_clearCoat;
 	float m_clearCoatRoughness;
 	float m_anisotropy;
-	float m_anisotropyDirection[3];
 	float m_thickness;
 	float m_subsurfaceColor[3];
 	float m_subsurfacePower;
@@ -564,7 +560,7 @@ public:
 
 		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
 
-		m_meshBunny = meshLoad("meshes/bunny.bin");
+		m_meshBunny = meshLoad("meshes/sphere.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
 	}
 
@@ -737,9 +733,6 @@ public:
 				ImGui::SliderFloat("Clear Coat", &m_settings.m_clearCoat, 0.0f, 1.0f );
 				ImGui::SliderFloat("Clear Coat Roughness", &m_settings.m_clearCoatRoughness, 0.0f, 1.0f );
 				ImGui::SliderFloat("Anisotropy", &m_settings.m_anisotropy, -1.0f, 1.0f );
-				ImGui::SliderFloat("Anisotropy X", &m_settings.m_anisotropyDirection[0], -1.0f, 1.0f );
-				ImGui::SliderFloat("Anisotropy Y", &m_settings.m_anisotropyDirection[1], -1.0f, 1.0f );
-				ImGui::SliderFloat("Anisotropy Z", &m_settings.m_anisotropyDirection[2], -1.0f, 1.0f );
 				if ( m_settings.m_shadingModel == SHADING_MODEL_SUBSURFACE)
 				{
 					ImGui::SliderFloat("Thickness", &m_settings.m_thickness, 0.0f, 1.0f );
@@ -751,7 +744,7 @@ public:
 					ImGui::ColorEdit3("Sheen Color", m_settings.m_sheenColor);
 					ImGui::ColorEdit3("Subsurface Color", m_settings.m_subsurfaceColor);
 				}
-
+				ImGui::Separator();
 				ImGui::SliderFloat("Specular AntiAliasing Variance", &m_settings.m_specularAntiAliasingVariance, 0.0f, 1.0f );
 				ImGui::SliderFloat("Specular AntiAliasing Threshold", &m_settings.m_specularAntiAliasingThreshold, 0.0f, 1.0f );
 				ImGui::Checkbox("Double Sided", &m_settings.m_doubleSided);
@@ -812,7 +805,6 @@ public:
 			m_uniforms.m_clearCoat = m_settings.m_clearCoat;
 			m_uniforms.m_clearCoatRoughness = m_settings.m_clearCoatRoughness;
 			m_uniforms.m_anisotropy = m_settings.m_anisotropy;
-			bx::memCopy(m_uniforms.m_anisotropyDirection, m_settings.m_anisotropyDirection, 3*sizeof(float));
 			m_uniforms.m_thickness = m_settings.m_thickness;
 			sRGBToLinear(m_uniforms.m_subsurfaceColor, m_settings.m_subsurfaceColor);
 			m_uniforms.m_subsurfacePower = m_settings.m_subsurfacePower;
