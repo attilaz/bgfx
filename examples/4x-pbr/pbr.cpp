@@ -757,8 +757,8 @@ public:
 
 			imguiEndFrame();
 			
-			float ev100 = bx::log2((m_settings.m_cameraAperture * m_settings.m_cameraAperture) / m_settings.m_cameraShutterSpeed * 100.0 / m_settings.m_cameraSensitivity);
-			float exposure = 1.0 / (bx::pow(2.0, ev100) * 1.2);
+			float ev100 = bx::log2((m_settings.m_cameraAperture * m_settings.m_cameraAperture) / m_settings.m_cameraShutterSpeed * 100.0f / m_settings.m_cameraSensitivity);
+			float exposure = 1.0f / (bx::pow(2.0f, ev100) * 1.2f);
 			
 			for(uint32_t ii=0; ii<Uniforms::FrameNumVec4*4; ++ii)
 				m_uniforms.m_frameParams[ii] = 0.0f;
@@ -780,8 +780,8 @@ public:
 			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance * exposure;
 			m_uniforms.m_exposure = exposure;
 			m_uniforms.m_ev100 = ev100;
-			m_uniforms.m_iblMaxMipLevel[0] = m_lightProbes[m_currentLightProbe].m_texNumMips;
-			m_uniforms.m_iblMaxMipLevel[1] = 1 << m_lightProbes[m_currentLightProbe].m_texNumMips;
+			m_uniforms.m_iblMaxMipLevel[0] = float(m_lightProbes[m_currentLightProbe].m_texNumMips);
+			m_uniforms.m_iblMaxMipLevel[1] = float(1 << m_lightProbes[m_currentLightProbe].m_texNumMips);
 			
 			bx::memCopy(m_uniforms.m_iblSH, m_lightProbes[m_currentLightProbe].m_sh, sizeof(m_lightProbes[m_currentLightProbe].m_sh));
 
