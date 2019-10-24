@@ -392,18 +392,18 @@ struct Settings
 	{
 		m_shadingModel = SHADING_MODEL_METALLIC;
 		
-		m_lightColor[0] = 1.0f;
-		m_lightColor[1] = 1.0f;
-		m_lightColor[2] = 1.0f;
-		m_lightIntensity = 100000.0f;
-		m_sunAngularRadius = 0.525f;
+		m_lightColor[0] = 0.98f;
+		m_lightColor[1] = 0.92f;
+		m_lightColor[2] = 0.89f;
+		m_lightIntensity = 110000.0f;
+		m_sunAngularRadius = 1.9f;
 		m_sunHaloSize = 10.0f;
 		m_sunHaloFalloff = 80.0f;
 		
 		m_lightElevation = 70.0f;
 		m_lightAzimuth = 45.0f;
 		
-		m_iblLuminance = 50000.0f;
+		m_iblLuminance = 30000.0f;
 		m_cameraAperture = 16.0f;
 		m_cameraShutterSpeed = 1.0f / 125.0f;
 		m_cameraSensitivity = 100.0f;
@@ -412,25 +412,25 @@ struct Settings
 		m_specularAntiAliasingThreshold = 0.0f;
 		m_doubleSided = 0.0f;
 		
-		float baseColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f};
+		float baseColor[4] = { 0.69f, 0.69f, 0.69f, 1.0f};
 		bx::memCopy(m_baseColor, baseColor, 4*sizeof(float));
-		m_roughness = 0.0f;
+		m_roughness = 0.6f;
 		m_metallic = 0.0f;
-		m_reflectance = 0.8f;
+		m_reflectance = 0.5f;
 		float emissive[4] = { 0.0f, 0.0f, 0.0f, 0.0f};
 		bx::memCopy(m_emissive, emissive, 4*sizeof(float));
 		m_clearCoat = 0.0f;
 		m_clearCoatRoughness = 0.0f;
 		m_anisotropy = 0.0f;
 		m_thickness = 1.0f;
-		float subsurfaceColor[3] = { 1.0f, 1.0f, 1.0f};
+		float subsurfaceColor[3] = { 0.0f, 0.0f, 0.0f};
 		bx::memCopy(m_subsurfaceColor, subsurfaceColor, 3*sizeof(float));
-		m_subsurfacePower = 1.0f;
-		float sheenColor[3] = { 1.0f, 1.0f, 1.0f};
+		m_subsurfacePower = 12.234f;
+		float sheenColor[3] = { 0.83f, 0.0f, 0.0f};
 		bx::memCopy(m_sheenColor, sheenColor, 3*sizeof(float));
-		float specularColor[3] = { 1.0f, 1.0f, 1.0f};
+		float specularColor[3] = { 0.0f, 0.0f, 0.0f};
 		bx::memCopy(m_specularColor, specularColor, 3*sizeof(float));
-		m_glossiness = 1.0f;
+		m_glossiness = 0.0f;
 
 		m_meshSelection = 0;
 	}
