@@ -1,5 +1,3 @@
-$input v_worldPosition, v_worldNormal, v_worldTangent, v_worldBitangent, v_lightSpacePosition
-
 #include "../common/common.sh"
 
 uniform vec4 u_materialUniforms[8];

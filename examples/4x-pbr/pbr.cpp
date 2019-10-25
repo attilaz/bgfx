@@ -558,7 +558,10 @@ public:
 		s_texIblSpecular = bgfx::createUniform("s_texIblSpecular", bgfx::UniformType::Sampler);
 		s_texSsao        = bgfx::createUniform("s_texSsao", bgfx::UniformType::Sampler);
 
-		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
+		m_programMesh[SHADING_MODEL_METALLIC]  = loadProgram("vs_pbr_mesh",   "fs_pbr_metallic_mesh");
+		m_programMesh[SHADING_MODEL_CLOTH]  = loadProgram("vs_pbr_mesh",   "fs_pbr_cloth_mesh");
+		m_programMesh[SHADING_MODEL_SUBSURFACE]  = loadProgram("vs_pbr_mesh",   "fs_pbr_subsurface_mesh");
+		m_programMesh[SHADING_MODEL_SPECULAR]  = loadProgram("vs_pbr_mesh",   "fs_pbr_specular_mesh");
 
 		m_meshBunny = meshLoad("meshes/material_sphere.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
@@ -570,7 +573,10 @@ public:
 		meshUnload(m_meshOrb);
 
 		// Cleanup.
-		bgfx::destroy(m_programMesh);
+		bgfx::destroy(m_programMesh[SHADING_MODEL_METALLIC]);
+		bgfx::destroy(m_programMesh[SHADING_MODEL_CLOTH]);
+		bgfx::destroy(m_programMesh[SHADING_MODEL_SUBSURFACE]);
+		bgfx::destroy(m_programMesh[SHADING_MODEL_SPECULAR] );
 
 		bgfx::destroy(s_texIblDFG);
 		bgfx::destroy(s_texIblSpecular);
@@ -868,7 +874,7 @@ public:
 				bx::memCopy(m_uniforms.m_worldFromModelNormalMatrix, mtxCof, 3*4*sizeof(float));
 
 				m_uniforms.submit();
-				meshSubmit(m_meshBunny, 0, m_programMesh, mtx);
+				meshSubmit(m_meshBunny, 0, m_programMesh[m_settings.m_shadingModel], mtx);
 			}
 			else
 			{
@@ -907,7 +913,7 @@ public:
 						bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex);
 						bgfx::setTexture(5, s_texSsao, m_texSsao);
 
-						meshSubmit(m_meshOrb, 0, m_programMesh, mtx);
+						meshSubmit(m_meshOrb, 0, m_programMesh[m_settings.m_shadingModel], mtx);
 					}
 				}
 			}
@@ -940,7 +946,7 @@ public:
 	bgfx::UniformHandle s_texIblSpecular;
 	bgfx::UniformHandle s_texSsao;
 
-	bgfx::ProgramHandle m_programMesh;
+	bgfx::ProgramHandle m_programMesh[4];
 
 	Mesh* m_meshBunny;
 	Mesh* m_meshOrb;
