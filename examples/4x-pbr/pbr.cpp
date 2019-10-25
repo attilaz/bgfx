@@ -400,8 +400,8 @@ struct Settings
 		m_sunHaloSize = 10.0f;
 		m_sunHaloFalloff = 80.0f;
 		
-		m_lightElevation = 70.0f;
-		m_lightAzimuth = 45.0f;
+		m_lightElevation = 45.0f;
+		m_lightAzimuth = 125.0f;
 		
 		m_iblLuminance = 30000.0f;
 		m_cameraAperture = 16.0f;
@@ -657,6 +657,7 @@ public:
 			
 			ImGui::SliderFloat("Elevation", &m_settings.m_lightElevation, 0.0f, 90.0f);
 			ImGui::SliderFloat("Azimuth", &m_settings.m_lightAzimuth, 0.0f, 360.0f);
+
 			ImGui::ColorEdit3("Color", m_settings.m_lightColor);
 			ImGui::SliderFloat("Intensity", &m_settings.m_lightIntensity, 0.0f, 100000.0f, "%.2f", 2.0f);
 			
@@ -774,9 +775,9 @@ public:
 			float el = m_settings.m_lightElevation * (bx::kPi/180.0f);
 			float az = m_settings.m_lightAzimuth   * (bx::kPi/180.0f);
 			m_uniforms.m_lightDirection[0] = bx::cos(el)*bx::cos(az);
-			m_uniforms.m_lightDirection[2] = bx::cos(el)*bx::sin(az);
 			m_uniforms.m_lightDirection[1] = bx::sin(el);
-			
+			m_uniforms.m_lightDirection[2] = bx::cos(el)*bx::sin(az);
+
 			m_uniforms.m_iblLuminance = m_settings.m_iblLuminance * exposure;
 			m_uniforms.m_exposure = exposure;
 			m_uniforms.m_ev100 = ev100;
