@@ -39,9 +39,9 @@ void main()
 	//v_worldTangent = output.worldTangent;
 	//v_worldBitangent = output.worldBitangent;
 
-	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal.xyz * 2.0 - 1.0);
-	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent.xyz * 2.0 - 1.0);
-	v_worldBitangent = cross(v_worldNormal, v_worldTangent) * (a_tangent.w * 2.0 - 1.0);
+	v_worldNormal = mul(u_objectUniforms_worldFromModelNormalMatrix, a_normal.xyz);
+	v_worldTangent = mul(u_objectUniforms_worldFromModelNormalMatrix, a_tangent.xyz);
+	v_worldBitangent = cross(v_worldTangent, v_worldNormal) * a_tangent.w;
 
 	v_lightSpacePosition = output.lightSpacePosition;
 	gl_Position = output.clipPosition;

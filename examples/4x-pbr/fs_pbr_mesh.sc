@@ -30,7 +30,7 @@ uniform vec4 u_materialUniforms[8];
 //#define MATERIAL_HAS_NORMAL  // this has strange effect
 #define MATERIAL_HAS_CLEAR_COAT
 //#define MATERIAL_HAS_CLEAR_COAT_NORMAL
-//#define MATERIAL_HAS_ANISOTROPY
+#define MATERIAL_HAS_ANISOTROPY
 //#define MATERIAL_HAS_DOUBLE_SIDED_CAPABILITY
 //#define MATERIAL_HAS_AMBIENT_OCCLUSION
 //#define MATERIAL_HAS_CLEAR_COAT_ROUGHNESS
@@ -65,7 +65,7 @@ void main() {
 	stageIn.fragCoord = gl_FragCoord;
 	stageIn.frontFacing = gl_FrontFacing;
 
-//gl_FragColor.rgb = stageIn.worldTangent.rgb;
+//gl_FragColor.rgb = stageIn.worldBitangent.rgb;
 //gl_FragColor.a = 1.0;
 //return;
 

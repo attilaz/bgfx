@@ -209,8 +209,8 @@ struct Camera
 		m_target.curr = { 0.0f, 0.0f, 0.0f };
 		m_target.dest = { 0.0f, 0.0f, 0.0f };
 
-		m_pos.curr = { 0.0f, 0.0f, -3.0f };
-		m_pos.dest = { 0.0f, 0.0f, -3.0f };
+		m_pos.curr = { 0.0f, 0.0f, 3.0f };
+		m_pos.dest = { 0.0f, 0.0f, 3.0f };
 
 		m_orbit[0] = 0.0f;
 		m_orbit[1] = 0.0f;
@@ -218,7 +218,7 @@ struct Camera
 
 	void mtxLookAt(float* _outViewMtx)
 	{
-		bx::mtxLookAt(_outViewMtx, m_pos.curr, m_target.curr);
+		bx::mtxLookAt(_outViewMtx, m_pos.curr, m_target.curr, bx::Vec3(0.0f,1.0f,0.0f), bx::Handness::Right);
 	}
 
 	void orbit(float _dx, float _dy)
@@ -560,7 +560,7 @@ public:
 
 		m_programMesh  = loadProgram("vs_pbr_mesh",   "fs_pbr_mesh");
 
-		m_meshBunny = meshLoad("meshes/sphere.bin");
+		m_meshBunny = meshLoad("meshes/material_sphere.bin");
 		m_meshOrb = meshLoad("meshes/orb.bin");
 	}
 
@@ -847,7 +847,7 @@ public:
 			float view[16];
 			m_camera.mtxLookAt(view);
 			float proj[16];
-			bx::mtxProj(proj, 45.0f, float(m_width)/float(m_height), 0.1f, 100.0f, caps->homogeneousDepth);
+			bx::mtxProj(proj, 45.0f, float(m_width)/float(m_height), 0.1f, 100.0f, caps->homogeneousDepth, bx::Handness::Right);
 			bgfx::setViewTransform(0, view, proj);
 
 			// View rect.
@@ -857,7 +857,7 @@ public:
 			{
 				// Submit bunny.
 				float mtx[16];
-				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, bx::kPi, 0.0f, 0.0f, -0.80f, 0.0f);
+				bx::mtxSRT(mtx, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 				bgfx::setTexture(3, s_texIblDFG, m_texIblDFG, BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setTexture(4, s_texIblSpecular, m_lightProbes[m_currentLightProbe].m_tex, BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setTexture(5, s_texSsao, m_texSsao);
