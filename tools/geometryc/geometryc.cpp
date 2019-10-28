@@ -380,7 +380,7 @@ void parseObj(char* _data, uint32_t _size, ObjVertices& _vertices,
 			TriangleArray& _triangles,
 			GroupArray& _groups,
 			uint32_t& _num,
-			bool _hasBc, bool _ccw, float _scale)
+			bool _hasBc)
 {
 	// Reference(s):
 	// - Wavefront .obj file
@@ -472,25 +472,13 @@ void parseObj(char* _data, uint32_t _size, ObjVertices& _vertices,
 						triangle.m_index[edge] = index;
 						if (2 == edge)
 						{
-							if (_ccw)
-							{
-								bx::swap(triangle.m_index[1], triangle.m_index[2]);
-							}
 							_triangles.push_back(triangle);
 						}
 						break;
 
 					default:
-						if (_ccw)
-						{
-							triangle.m_index[2] = triangle.m_index[1];
-							triangle.m_index[1] = index;
-						}
-						else
-						{
-							triangle.m_index[1] = triangle.m_index[2];
-							triangle.m_index[2] = index;
-						}
+						triangle.m_index[1] = triangle.m_index[2];
+						triangle.m_index[2] = index;
 
 						_triangles.push_back(triangle);
 						break;
@@ -569,7 +557,7 @@ void parseObj(char* _data, uint32_t _size, ObjVertices& _vertices,
 						pw = 1.0f;
 					}
 
-					float invW = _scale / pw;
+					float invW = 1.0f / pw;
 					px *= invW;
 					py *= invW;
 					pz *= invW;
@@ -624,7 +612,6 @@ void parseObj(char* _data, uint32_t _size, ObjVertices& _vertices,
 
 	bool hasNormal;
 	bool hasTexcoord;
-	bool hasColor;
 
 	{
 		TriangleArray::const_iterator it = _triangles.begin();
@@ -678,7 +665,7 @@ void parseObj(char* _data, uint32_t _size, ObjVertices& _vertices,
 }
 
 
-void objGetVertex(ObjVertices& _vertices, Index3& _index, bgfx::VertexDecl _decl, uint8_t* _vertexData, bool _hasBc, bool _flipV, uint32_t _numVertices, uint32_t _numIndices)
+void objGetVertex(ObjVertices& _vertices, Index3& _index, bgfx::VertexDecl _decl, uint8_t* _vertexData, bool _hasBc, bool _flipV, bool _ccw, float _scale, uint32_t _numVertices, uint32_t _numIndices)
 {
 	uint32_t positionOffset = _decl.getOffset(bgfx::Attrib::Position);
 
@@ -733,9 +720,9 @@ void parseGltf(char* _data, uint32_t _size, ObjVertices& _vertices,
 	TriangleArray& _triangles,
 	GroupArray& _groups,
 	uint32_t& _num,
-	bool _hasBc, bool _ccw, float _scale)
+	bool _hasBc)
 {
-	cgltf_options options = { 0 };
+	cgltf_options options = {  };
 	cgltf_data* data = NULL;
 	cgltf_result result = cgltf_parse(&options, _data, _size, &data);
 
@@ -922,11 +909,11 @@ int main(int _argc, const char* _argv[])
 
 	if (0 == bx::strCmpI(ext, ".obj"))
 	{
-		parseObj(data, size, objVertices, triangles, groups, num, hasBc, ccw, scale);
+		parseObj(data, size, objVertices, triangles, groups, num, hasBc);
 	}
 	else if (0 == bx::strCmpI(ext, ".gltf") || 0 == bx::strCmpI(ext, ".glb"))
 	{
-		parseGltf(data, size, objVertices, triangles, groups, num, hasBc, ccw, scale);
+		parseGltf(data, size, objVertices, triangles, groups, num, hasBc);
 	}
 	else
 	{
@@ -939,6 +926,22 @@ int main(int _argc, const char* _argv[])
 	int64_t now = bx::getHPCounter();
 	parseElapsed += now;
 	int64_t convertElapsed = -now;
+
+	if ( scale != 1.0f )
+	{
+		for(uint32_t ii = 0, numPositions = objVertices.m_positions.size(); ii < numPositions; ++ii)
+		{
+			objVertices.m_positions[ii] = bx::mul(objVertices.m_positions[ii], scale);
+		}
+	}
+	
+	if (ccw)
+	{
+		for(uint32_t tri = 0, numTris = triangles.size(); tri<numTris; ++tri)
+		{
+			bx::swap(triangles[tri].m_index[1], triangles[tri].m_index[2]);
+		}
+	}
 
 	std::sort(groups.begin(), groups.end(), GroupSortByMaterial() );
 
@@ -1110,7 +1113,7 @@ int main(int _argc, const char* _argv[])
 			for (uint32_t edge = 0; edge < 3; ++edge)
 			{
 				uint8_t vertex[256];
-				objGetVertex(objVertices, triangle.m_index[edge], decl, vertex, hasBc, flipV, numVertices, numIndices);
+				objGetVertex(objVertices, triangle.m_index[edge], decl, vertex, hasBc, flipV, ccw, scale,  numVertices, numIndices);
 
 				uint32_t hash = bx::hash<bx::HashMurmur2A>(vertex, stride);
 				size_t bucket = hash & hashmod;

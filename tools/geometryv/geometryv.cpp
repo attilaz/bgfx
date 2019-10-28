@@ -956,11 +956,13 @@ int _main_(int _argc, char** _argv)
 							ImGui::Indent();
 							for (GroupArray::const_iterator itGroup = mesh->m_groups.begin(), itGroupEnd = mesh->m_groups.end(); itGroup != itGroupEnd; ++itGroup)
 							{
-								ImGui::Text("Group v %d i %d", itGroup->m_numVertices, itGroup->m_numIndices);
+								ImGui::Text("Group v %d i %d c %.2f %.2f %.2f r %.2f", itGroup->m_numVertices, itGroup->m_numIndices,
+											itGroup->m_sphere.center.x, itGroup->m_sphere.center.y, itGroup->m_sphere.center.z, itGroup->m_sphere.radius);
 								ImGui::Indent();
 								for (PrimitiveArray::const_iterator itPrim = itGroup->m_prims.begin(), itPrimEnd = itGroup->m_prims.end(); itPrim != itPrimEnd; ++itPrim)
 								{
-									ImGui::Text("Primitive v %d i %d", itPrim->m_numVertices, itPrim->m_numIndices);
+									ImGui::Text("Primitive v %d i %d c %.2f %.2f %.2f r %.2f", itPrim->m_numVertices, itPrim->m_numIndices,
+												itPrim->m_sphere.center.x, itPrim->m_sphere.center.y, itPrim->m_sphere.center.z, itPrim->m_sphere.radius);
 								}
 								ImGui::Unindent();
 							}
