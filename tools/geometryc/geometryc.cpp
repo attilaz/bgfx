@@ -418,12 +418,34 @@ void setCoordinateSystem(CoordinateSystem* _cs, bx::Handness::Enum _handness, Ax
 		_cs->m_right = bx::cross(_cs->m_up, _cs->m_forward);
 }
 
-bx::Handness::Enum getHandness(CoordinateSystem* _cs)
+float mtxDeterminant(const float* _a)
 {
-	bx::Vec3 right = bx::cross(_cs->m_forward, _cs->m_up);
-
-	return dot(right, _cs->m_right) > 0.0f ? bx::Handness::Right : bx::Handness::Left;
+	const float xx = _a[ 0];
+	const float xy = _a[ 1];
+	const float xz = _a[ 2];
+	const float xw = _a[ 3];
+	const float yx = _a[ 4];
+	const float yy = _a[ 5];
+	const float yz = _a[ 6];
+	const float yw = _a[ 7];
+	const float zx = _a[ 8];
+	const float zy = _a[ 9];
+	const float zz = _a[10];
+	const float zw = _a[11];
+	const float wx = _a[12];
+	const float wy = _a[13];
+	const float wz = _a[14];
+	const float ww = _a[15];
+	
+	float det = 0.0f;
+	det += xx * (yy*(zz*ww - zw*wz) - yz*(zy*ww - zw*wy) + yw*(zy*wz - zz*wy) );
+	det -= xy * (yx*(zz*ww - zw*wz) - yz*(zx*ww - zw*wx) + yw*(zx*wz - zz*wx) );
+	det += xz * (yx*(zy*ww - zw*wy) - yy*(zx*ww - zw*wx) + yw*(zx*wy - zy*wx) );
+	det -= xw * (yx*(zy*wz - zz*wy) - yy*(zx*wz - zz*wx) + yz*(zx*wy - zy*wx) );
+	
+	return det;
 }
+
 
 void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 {
@@ -988,11 +1010,58 @@ int main(int _argc, const char* _argv[])
 	std::sort(mesh.m_groups.begin(), mesh.m_groups.end(), GroupSortByMaterial() );
 
 	bool changeWinding = ccw;
-	if ( getHandness(&coordinateSystem) != getHandness(&mesh.m_coordinateSystem) )
+
+	if (scale != 1.0f)
 	{
-		changeWinding = !changeWinding;
+		for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
+		{
+			it->x *= scale;
+			it->y *= scale;
+			it->z *= scale;
+		}
+	}
+	
+	{
+		float meshTranform[16];
+		bx::mtxIdentity(meshTranform);
+		bx::store(&meshTranform[0], mesh.m_coordinateSystem.m_forward);
+		bx::store(&meshTranform[4], mesh.m_coordinateSystem.m_right);
+		bx::store(&meshTranform[8], mesh.m_coordinateSystem.m_up);
+		float meshInvTranform[16];
+		bx::mtxTranspose(meshInvTranform, meshTranform);
+		
+		float outTransform[16];
+		bx::mtxIdentity(outTransform);
+		bx::store(&outTransform[0], coordinateSystem.m_forward);
+		bx::store(&outTransform[4], coordinateSystem.m_right);
+		bx::store(&outTransform[8], coordinateSystem.m_up);
+		
+		float transform[16];
+		bx::mtxMul(transform, meshInvTranform, outTransform);
+		
+		if ( mtxDeterminant(transform) < 0.0f )
+		{
+			changeWinding = !changeWinding;
+		}
+
+		float identity[16];
+		bx::mtxIdentity(identity);
+		
+		if ( 0 != bx::memCmp(identity, transform, sizeof(transform) ) )
+		{
+			for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
+			{
+				*it = bx::mul(*it, transform);
+			}
+			
+			for (Vec3Array::iterator it = mesh.m_normals.begin(), itEnd = mesh.m_normals.end(); it != itEnd; ++it)
+			{
+				*it = bx::mul(*it, transform);
+			}
+		}
 	}
 
+	
 	bool hasColor = false;
 	bool hasNormal = false;
 	bool hasTexcoord = false;
@@ -1019,36 +1088,6 @@ int main(int _argc, const char* _argv[])
 			{
 				bx::swap(jt->m_index[1], jt->m_index[2]);
 			}
-		}
-	}
-
-	if (scale != 1.0f)
-	{
-		for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
-		{
-			it->x *= scale;
-			it->y *= scale;
-			it->z *= scale;
-		}
-	}
-
-	if (!bx::equal(&mesh.m_coordinateSystem.m_forward.x, &coordinateSystem.m_forward.x, 3, FLT_EPSILON)
-		|| !bx::equal(&mesh.m_coordinateSystem.m_right.x, &coordinateSystem.m_right.x, 3, FLT_EPSILON)
-		|| !bx::equal(&mesh.m_coordinateSystem.m_up.x, &coordinateSystem.m_up.x, 3, FLT_EPSILON))
-	{
-		for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
-		{
-			bx::Vec3 pos = *it;
-
-			float forward = dot(pos, mesh.m_coordinateSystem.m_forward);
-			float right = dot(pos, mesh.m_coordinateSystem.m_right);
-			float up = dot(pos, mesh.m_coordinateSystem.m_up);
-
-			pos = bx::mul(coordinateSystem.m_forward, forward);
-			pos = bx::mad(coordinateSystem.m_right, right, pos);
-			pos = bx::mad(coordinateSystem.m_up, up, pos);
-
-			*it = pos;
 		}
 	}
 
