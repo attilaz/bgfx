@@ -95,6 +95,48 @@ struct Primitive
 
 typedef stl::vector<Primitive> PrimitiveArray;
 
+struct Axis
+{
+	enum Enum
+	{
+		PositiveY,
+		PositiveZ,
+	};
+};
+
+struct CoordinateSystemParam
+{
+	const char*			m_param;
+	bx::Handness::Enum	m_handness;
+	Axis::Enum			m_upAxis;
+};
+
+static const CoordinateSystemParam s_coordinateSystemParams[] =
+{
+	{ "lh-up+y", bx::Handness::Left, Axis::PositiveY },
+	{ "lh-up+z", bx::Handness::Left, Axis::PositiveZ },
+	{ "rh-up+y", bx::Handness::Right, Axis::PositiveY },
+	{ "rh-up+y", bx::Handness::Right, Axis::PositiveY },
+};
+
+struct CoordinateSystem
+{
+	bx::Vec3 m_forward;
+	bx::Vec3 m_right;
+	bx::Vec3 m_up;
+};
+
+struct Mesh
+{
+	Vec3Array		m_positions;
+	Vec3Array		m_normals;
+	Vec3Array		m_texcoords;
+	TriangleArray	m_triangles;
+	GroupArray		m_groups;
+
+	CoordinateSystem m_coordinateSystem;
+};
+
 static uint32_t s_obbSteps = 17;
 
 #define BGFX_CHUNK_MAGIC_VB  BX_MAKEFOURCC('V', 'B', ' ', 0x1)
@@ -362,21 +404,35 @@ struct GroupSortByMaterial
 	}
 };
 
-struct Mesh
+void setCoordinateSystem(CoordinateSystem* _cs, bx::Handness::Enum _handness, Axis::Enum _upAxis)
 {
-	Vec3Array m_positions;
-	Vec3Array m_normals;
-	Vec3Array m_texcoords;
-	TriangleArray m_triangles;
-	GroupArray m_groups;
-};
+	_cs->m_forward = bx::Vec3(1.0f, 0.0f, 0.0f);
+
+	_cs->m_up.x = 0.0f;
+	_cs->m_up.y = _upAxis == Axis::Enum::PositiveY ? 1.0f : 0.0f;
+	_cs->m_up.z = _upAxis == Axis::Enum::PositiveZ ? 1.0f : 0.0f;
+
+	if ( _handness == bx::Handness::Right )
+		_cs->m_right = bx::cross(_cs->m_forward, _cs->m_up);
+	else
+		_cs->m_right = bx::cross(_cs->m_up, _cs->m_forward);
+}
+
+bx::Handness::Enum getHandness(CoordinateSystem* _cs)
+{
+	bx::Vec3 right = bx::cross(_cs->m_forward, _cs->m_up);
+
+	return dot(right, _cs->m_right) > 0.0f ? bx::Handness::Right : bx::Handness::Left;
+}
 
 void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 {
 	// Reference(s):
 	// - Wavefront .obj file
 	//   https://en.wikipedia.org/wiki/Wavefront_.obj_file
-	
+
+	setCoordinateSystem(&_mesh->m_coordinateSystem, bx::Handness::Right, Axis::PositiveY);
+
 	uint32_t num = 0;
 	
 	Group group;
@@ -607,6 +663,14 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 
 void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 {
+	// Reference(s):
+	// - Gltf 2.0 specification
+	//  https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
+
+	_mesh->m_coordinateSystem.m_forward = bx::Vec3(0.0f,  0.0f, 1.0f);
+	_mesh->m_coordinateSystem.m_up      = bx::Vec3(0.0f,  1.0f, 0.0f);
+	_mesh->m_coordinateSystem.m_right   = bx::Vec3(-1.0f, 0.0f, 0.0f);
+
 	cgltf_mesh* mesh = _node->mesh;
 	if (NULL != mesh)
 	{
@@ -779,7 +843,7 @@ void help(const char* _error = NULL)
 		  "\n"
 		  "Supported input file types:\n"
 		  "    *.obj                  Wavefront\n"
-		  "    *.gltf,*.glb           glTF 2.0\n"
+		  "    *.gltf,*.glb           glTF 2.0 (WIP)\n"
 
 		  "\n"
 		  "Options:\n"
@@ -788,7 +852,7 @@ void help(const char* _error = NULL)
 		  "  -f <file path>           Input file path.\n"
 		  "  -o <file path>           Output file path.\n"
 		  "  -s, --scale <num>        Scale factor.\n"
-		  "      --ccw                Counter-clockwise winding order.\n"
+		  "      --ccw                Front face is counter-clockwise winding order.\n"
 		  "      --flipv              Flip texture coordinate V.\n"
 		  "      --obb <num>          Number of steps for calculating oriented bounding box.\n"
 		  "           Default value is 17. Less steps less precise OBB is.\n"
@@ -802,6 +866,7 @@ void help(const char* _error = NULL)
 		  "      --tangent            Calculate tangent vectors (packing mode is the same as normal).\n"
 		  "      --barycentric        Adds barycentric vertex attribute (packed in bgfx::Attrib::Color1).\n"
 		  "  -c, --compress           Compress indices.\n"
+		  "      --[l/r]h-up+[y/z]	  Coordinate system. Default is '--lh-up+y' Left-Handed +Y is up.\n"
 
 		  "\n"
 		  "For additional information, see https://github.com/bkaradzic/bgfx\n"
@@ -812,18 +877,18 @@ int main(int _argc, const char* _argv[])
 {
 	bx::CommandLine cmdLine(_argc, _argv);
 
-	if (cmdLine.hasArg('v', "version") )
+	if (cmdLine.hasArg('v', "version"))
 	{
 		bx::printf(
-			  "geometryc, bgfx geometry compiler tool, version %d.%d.%d.\n"
+			"geometryc, bgfx geometry compiler tool, version %d.%d.%d.\n"
 			, BGFX_GEOMETRYC_VERSION_MAJOR
 			, BGFX_GEOMETRYC_VERSION_MINOR
 			, BGFX_API_VERSION
-			);
+		);
 		return bx::kExitSuccess;
 	}
 
-	if (cmdLine.hasArg('h', "help") )
+	if (cmdLine.hasArg('h', "help"))
 	{
 		help();
 		return bx::kExitFailure;
@@ -869,6 +934,19 @@ int main(int _argc, const char* _argv[])
 	bool hasTangent = cmdLine.hasArg("tangent");
 	bool hasBc = cmdLine.hasArg("barycentric");
 
+	CoordinateSystem coordinateSystem;
+	Axis::Enum upAxis = Axis::PositiveY;
+	bx::Handness::Enum handness = bx::Handness::Left;
+	for (uint32_t ii = 0; ii < BX_COUNTOF(s_coordinateSystemParams); ++ii)
+	{
+		if (cmdLine.hasArg(s_coordinateSystemParams[ii].m_param))
+		{
+			handness = s_coordinateSystemParams[ii].m_handness;
+			upAxis = s_coordinateSystemParams[ii].m_upAxis;
+		}
+	}
+	setCoordinateSystem(&coordinateSystem, handness, upAxis);
+
 	bx::FileReader fr;
 	if (!bx::open(&fr, filePath) )
 	{
@@ -909,6 +987,12 @@ int main(int _argc, const char* _argv[])
 
 	std::sort(mesh.m_groups.begin(), mesh.m_groups.end(), GroupSortByMaterial() );
 
+	bool changeWinding = ccw;
+	if ( getHandness(&coordinateSystem) != getHandness(&mesh.m_coordinateSystem) )
+	{
+		changeWinding = !changeWinding;
+	}
+
 	bool hasColor = false;
 	bool hasNormal = false;
 	bool hasTexcoord = false;
@@ -929,12 +1013,42 @@ int main(int _argc, const char* _argv[])
 			}
 		}
 		
-		if (ccw)
+		if (changeWinding)
 		{
 			for (TriangleArray::iterator jt = mesh.m_triangles.begin(), jtEnd = mesh.m_triangles.end(); jt != jtEnd; ++jt)
 			{
 				bx::swap(jt->m_index[1], jt->m_index[2]);
 			}
+		}
+	}
+
+	if (scale != 1.0f)
+	{
+		for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
+		{
+			it->x *= scale;
+			it->y *= scale;
+			it->z *= scale;
+		}
+	}
+
+	if (!bx::equal(&mesh.m_coordinateSystem.m_forward.x, &coordinateSystem.m_forward.x, 3, FLT_EPSILON)
+		|| !bx::equal(&mesh.m_coordinateSystem.m_right.x, &coordinateSystem.m_right.x, 3, FLT_EPSILON)
+		|| !bx::equal(&mesh.m_coordinateSystem.m_up.x, &coordinateSystem.m_up.x, 3, FLT_EPSILON))
+	{
+		for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
+		{
+			bx::Vec3 pos = *it;
+
+			float forward = dot(pos, mesh.m_coordinateSystem.m_forward);
+			float right = dot(pos, mesh.m_coordinateSystem.m_right);
+			float up = dot(pos, mesh.m_coordinateSystem.m_up);
+
+			pos = bx::mul(coordinateSystem.m_forward, forward);
+			pos = bx::mad(coordinateSystem.m_right, right, pos);
+			pos = bx::mad(coordinateSystem.m_up, up, pos);
+
+			*it = pos;
 		}
 	}
 
@@ -1109,10 +1223,6 @@ int main(int _argc, const char* _argv[])
 				float* position = (float*)(vertices + positionOffset);
 				bx::memCopy(position, &mesh.m_positions[index.m_position], 3*sizeof(float) );
 				
-				position[0] *= scale;
-				position[1] *= scale;
-				position[2] *= scale;
-
 				if (hasColor)
 				{
 					uint32_t* color0 = (uint32_t*)(vertices + color0Offset);
