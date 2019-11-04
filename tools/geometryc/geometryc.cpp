@@ -99,31 +99,44 @@ struct Axis
 {
 	enum Enum
 	{
+		NegativeX,
+		PositiveX,
+		NegativeY,
 		PositiveY,
+		NegativeZ,
 		PositiveZ,
 	};
 };
 
-struct CoordinateSystemParam
+static bx::Vec3 s_axisVectors[6] =
 {
-	const char*			m_param;
-	bx::Handness::Enum	m_handness;
-	Axis::Enum			m_upAxis;
-};
-
-static const CoordinateSystemParam s_coordinateSystemParams[] =
-{
-	{ "lh-up+y", bx::Handness::Left, Axis::PositiveY },
-	{ "lh-up+z", bx::Handness::Left, Axis::PositiveZ },
-	{ "rh-up+y", bx::Handness::Right, Axis::PositiveY },
-	{ "rh-up+y", bx::Handness::Right, Axis::PositiveY },
+	bx::Vec3(-1.0f, 0.0f, 0.0f),
+	bx::Vec3( 1.0f, 0.0f, 0.0f),
+	bx::Vec3( 0.0f,-1.0f, 0.0f),
+	bx::Vec3( 0.0f, 1.0f, 0.0f),
+	bx::Vec3( 0.0f, 0.0f,-1.0f),
+	bx::Vec3( 0.0f, 0.0f, 1.0f),
 };
 
 struct CoordinateSystem
 {
-	bx::Vec3 m_forward;
-	bx::Vec3 m_right;
-	bx::Vec3 m_up;
+	bx::Handness::Enum	m_handness;
+	Axis::Enum			m_up;
+	Axis::Enum			m_forward;
+};
+
+struct CoordinateSystemMapping
+{
+	const char*			m_param;
+	CoordinateSystem	m_coordinateSystem;
+};
+
+static const CoordinateSystemMapping s_coordinateSystemMappings[] =
+{
+	{ "lh-up+y", { bx::Handness::Left, Axis::PositiveY, Axis::PositiveZ } } ,
+	{ "lh-up+z", { bx::Handness::Left, Axis::PositiveZ, Axis::PositiveY } },
+	{ "rh-up+y", { bx::Handness::Right, Axis::PositiveY, Axis::PositiveZ } },
+	{ "rh-up+z", { bx::Handness::Right, Axis::PositiveZ, Axis::PositiveY } },
 };
 
 struct Mesh
@@ -404,21 +417,21 @@ struct GroupSortByMaterial
 	}
 };
 
-void setCoordinateSystem(CoordinateSystem* _cs, bx::Handness::Enum _handness, Axis::Enum _upAxis)
+void mtxCoordinateTransform(float* _result, const CoordinateSystem& _cs)
 {
-	_cs->m_up.x = 0.0f;
-	_cs->m_up.y = _upAxis == Axis::Enum::PositiveY ? 1.0f : 0.0f;
-	_cs->m_up.z = _upAxis == Axis::Enum::PositiveZ ? 1.0f : 0.0f;
-
-	_cs->m_forward.x = 0.0f;
-	_cs->m_forward.y = _upAxis != Axis::Enum::PositiveY ? 1.0f : 0.0f;
-	_cs->m_forward.z = _upAxis != Axis::Enum::PositiveZ ? 1.0f : 0.0f;
-
-	if ( _handness == bx::Handness::Right )
-		_cs->m_right = bx::cross(_cs->m_forward, _cs->m_up);
-	else
-		_cs->m_right = bx::cross(_cs->m_up, _cs->m_forward);
+	bx::Vec3 up = s_axisVectors[_cs.m_up];
+	bx::Vec3 forward = s_axisVectors[_cs.m_forward];
+	bx::Vec3 right = cross(forward,up);
+	if ( _cs.m_handness == bx::Handness::Left)
+	{
+		right = bx::mul(right, -1.0f);
+	}
+	bx::mtxIdentity(_result);
+	bx::store(&_result[0], forward);
+	bx::store(&_result[4], right);
+	bx::store(&_result[8], up);
 }
+
 
 float mtxDeterminant(const float* _a)
 {
@@ -457,9 +470,9 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 
 	// Coordinate system is right-handed, but up/forward is not defined
 	// Blender importer's default: +Y Up, -Z Forward
-	_mesh->m_coordinateSystem.m_forward = bx::Vec3(0.0f, 0.0f, -1.0f);
-	_mesh->m_coordinateSystem.m_up      = bx::Vec3(0.0f, 1.0f, 0.0f);
-	_mesh->m_coordinateSystem.m_right   = bx::Vec3(1.0f, 0.0f, 0.0f);
+	_mesh->m_coordinateSystem.m_handness = bx::Handness::Right;
+	_mesh->m_coordinateSystem.m_up = Axis::PositiveY;
+	_mesh->m_coordinateSystem.m_forward = Axis::NegativeZ;
 
 	uint32_t num = 0;
 	
@@ -695,9 +708,9 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 	// - Gltf 2.0 specification
 	//  https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
 
-	_mesh->m_coordinateSystem.m_forward = bx::Vec3(0.0f,  0.0f, 1.0f);
-	_mesh->m_coordinateSystem.m_up      = bx::Vec3(0.0f,  1.0f, 0.0f);
-	_mesh->m_coordinateSystem.m_right   = bx::Vec3(-1.0f, 0.0f, 0.0f);
+	_mesh->m_coordinateSystem.m_handness = bx::Handness::Right;
+	_mesh->m_coordinateSystem.m_forward  = Axis::PositiveZ;
+	_mesh->m_coordinateSystem.m_up       = Axis::PositiveY;
 
 	cgltf_mesh* mesh = _node->mesh;
 	if (NULL != mesh)
@@ -963,17 +976,16 @@ int main(int _argc, const char* _argv[])
 	bool hasBc = cmdLine.hasArg("barycentric");
 
 	CoordinateSystem coordinateSystem;
-	Axis::Enum upAxis = Axis::PositiveY;
-	bx::Handness::Enum handness = bx::Handness::Left;
-	for (uint32_t ii = 0; ii < BX_COUNTOF(s_coordinateSystemParams); ++ii)
+	coordinateSystem.m_handness = bx::Handness::Left;
+	coordinateSystem.m_forward = Axis::PositiveZ;
+	coordinateSystem.m_up = Axis::PositiveY;
+	for (uint32_t ii = 0; ii < BX_COUNTOF(s_coordinateSystemMappings); ++ii)
 	{
-		if (cmdLine.hasArg(s_coordinateSystemParams[ii].m_param))
+		if (cmdLine.hasArg(s_coordinateSystemMappings[ii].m_param))
 		{
-			handness = s_coordinateSystemParams[ii].m_handness;
-			upAxis = s_coordinateSystemParams[ii].m_upAxis;
+			coordinateSystem = s_coordinateSystemMappings[ii].m_coordinateSystem;
 		}
 	}
-	setCoordinateSystem(&coordinateSystem, handness, upAxis);
 
 	bx::FileReader fr;
 	if (!bx::open(&fr, filePath) )
@@ -1028,20 +1040,15 @@ int main(int _argc, const char* _argv[])
 	}
 	
 	{
-		float meshTranform[16];
-		bx::mtxIdentity(meshTranform);
-		bx::store(&meshTranform[0], mesh.m_coordinateSystem.m_forward);
-		bx::store(&meshTranform[4], mesh.m_coordinateSystem.m_right);
-		bx::store(&meshTranform[8], mesh.m_coordinateSystem.m_up);
+		float meshTransform[16];
+		mtxCoordinateTransform(meshTransform, mesh.m_coordinateSystem);
+		
 		float meshInvTranform[16];
-		bx::mtxTranspose(meshInvTranform, meshTranform);
+		bx::mtxTranspose(meshInvTranform, meshTransform);
 		
 		float outTransform[16];
-		bx::mtxIdentity(outTransform);
-		bx::store(&outTransform[0], coordinateSystem.m_forward);
-		bx::store(&outTransform[4], coordinateSystem.m_right);
-		bx::store(&outTransform[8], coordinateSystem.m_up);
-		
+		mtxCoordinateTransform(outTransform, coordinateSystem);
+
 		float transform[16];
 		bx::mtxMul(transform, meshInvTranform, outTransform);
 		
