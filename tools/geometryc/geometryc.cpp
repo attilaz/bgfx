@@ -406,11 +406,13 @@ struct GroupSortByMaterial
 
 void setCoordinateSystem(CoordinateSystem* _cs, bx::Handness::Enum _handness, Axis::Enum _upAxis)
 {
-	_cs->m_forward = bx::Vec3(1.0f, 0.0f, 0.0f);
-
 	_cs->m_up.x = 0.0f;
 	_cs->m_up.y = _upAxis == Axis::Enum::PositiveY ? 1.0f : 0.0f;
 	_cs->m_up.z = _upAxis == Axis::Enum::PositiveZ ? 1.0f : 0.0f;
+
+	_cs->m_forward.x = 0.0f;
+	_cs->m_forward.y = _upAxis != Axis::Enum::PositiveY ? 1.0f : 0.0f;
+	_cs->m_forward.z = _upAxis != Axis::Enum::PositiveZ ? 1.0f : 0.0f;
 
 	if ( _handness == bx::Handness::Right )
 		_cs->m_right = bx::cross(_cs->m_forward, _cs->m_up);
@@ -453,7 +455,11 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 	// - Wavefront .obj file
 	//   https://en.wikipedia.org/wiki/Wavefront_.obj_file
 
-	setCoordinateSystem(&_mesh->m_coordinateSystem, bx::Handness::Right, Axis::PositiveY);
+	// Coordinate system is right-handed, but up/forward is not defined
+	// Blender importer's default: +Y Up, -Z Forward
+	_mesh->m_coordinateSystem.m_forward = bx::Vec3(0.0f, 0.0f, -1.0f);
+	_mesh->m_coordinateSystem.m_up      = bx::Vec3(0.0f, 1.0f, 0.0f);
+	_mesh->m_coordinateSystem.m_right   = bx::Vec3(1.0f, 0.0f, 0.0f);
 
 	uint32_t num = 0;
 	

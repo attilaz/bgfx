@@ -19,6 +19,7 @@
 #include <entry/cmd.h>
 #include <entry/dialog.h>
 #include <imgui/imgui.h>
+#include <debugdraw/debugdraw.h>
 #include <bgfx_utils.h>
 
 #include <tinystl/allocator.h>
@@ -322,6 +323,7 @@ struct View
 		, m_about(false)
 		, m_info(false)
 		, m_files(false)
+		, m_axes(false)
 		, m_meshCenter(0.0f,0.0f,0.0f)
 		, m_meshRadius(1.0f)
 		, m_idleTimer(0.0f)
@@ -406,6 +408,10 @@ struct View
 					m_camera.m_orbit[0] = 0.0f;
 					m_camera.m_orbit[1] = 0.0f;
 				}
+			}
+			else if (0 == bx::strCmp(_argv[1], "axes") )
+			{
+				m_axes ^= true;
 			}
 		}
 
@@ -563,6 +569,7 @@ struct View
 	bool     m_about;
 	bool     m_info;
 	bool     m_files;
+	bool 	 m_axes;
 
 	Camera	m_camera;
 	Mouse   m_mouse;
@@ -731,6 +738,8 @@ int _main_(int _argc, char** _argv)
 		);
 
 	imguiCreate();
+	
+	ddInit();
 
 	const bgfx::Caps* caps = bgfx::getCaps();
 	bgfx::RendererType::Enum type = caps->rendererType;
@@ -860,6 +869,14 @@ int _main_(int _argc, char** _argv)
 					{
 						cmdExec(s_resetCmd);
 					}
+					
+					ImGui::Separator();
+					
+					bool axes = view.m_axes;
+					if (ImGui::MenuItem("XYZ Axes", NULL, &axes) )
+					{
+						cmdExec("view axes");
+					}
 
 					ImGui::Separator();
 
@@ -987,11 +1004,15 @@ int _main_(int _argc, char** _argv)
 							ImGui::Indent();
 							for (GroupArray::const_iterator itGroup = mesh->m_groups.begin(), itGroupEnd = mesh->m_groups.end(); itGroup != itGroupEnd; ++itGroup)
 							{
-								ImGui::Text("Group v %d i %d", itGroup->m_numVertices, itGroup->m_numIndices);
+								ImGui::Text("Group v %d i %d c %.2f %.2f %.2f r %.2f", itGroup->m_numVertices, itGroup->m_numIndices,
+											itGroup->m_sphere.center.x, itGroup->m_sphere.center.y, itGroup->m_sphere.center.z,
+											itGroup->m_sphere.radius);
 								ImGui::Indent();
 								for (PrimitiveArray::const_iterator itPrim = itGroup->m_prims.begin(), itPrimEnd = itGroup->m_prims.end(); itPrim != itPrimEnd; ++itPrim)
 								{
-									ImGui::Text("Primitive v %d i %d", itPrim->m_numVertices, itPrim->m_numIndices);
+									ImGui::Text("Primitive v %d i %d c %.2f %.2f %.2f r %.2f", itPrim->m_numVertices, itPrim->m_numIndices,
+												itPrim->m_sphere.center.x, itPrim->m_sphere.center.y, itPrim->m_sphere.center.z,
+												itPrim->m_sphere.radius);
 								}
 								ImGui::Unindent();
 							}
@@ -1228,6 +1249,14 @@ int _main_(int _argc, char** _argv)
 
 			bgfx::touch(SCENE_VIEW_ID);
 
+			if ( view.m_axes )
+			{
+				DebugDrawEncoder dde;
+				dde.begin(SCENE_VIEW_ID);
+				dde.drawAxis(0.0f, 0.0f, 0.0f);
+				dde.end();
+			}
+
 			bgfx::dbgTextClear();
 
 			float orientation[16];
@@ -1265,6 +1294,8 @@ int _main_(int _argc, char** _argv)
 
 	bgfx::destroy(meshProgram);
 
+	ddShutdown();
+	
 	imguiDestroy();
 
 	bgfx::shutdown();
