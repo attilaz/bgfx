@@ -468,11 +468,10 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 	// - Wavefront .obj file
 	//   https://en.wikipedia.org/wiki/Wavefront_.obj_file
 
-	// Coordinate system is right-handed, but up/forward is not defined
-	// Blender importer's default: +Y Up, -Z Forward
+	// Coordinate system is right-handed, but up/forward is not defined, but +Y Up, +Z Forward seems to be a common default
 	_mesh->m_coordinateSystem.m_handness = bx::Handness::Right;
 	_mesh->m_coordinateSystem.m_up = Axis::PositiveY;
-	_mesh->m_coordinateSystem.m_forward = Axis::NegativeZ;
+	_mesh->m_coordinateSystem.m_forward = Axis::PositiveZ;
 
 	uint32_t num = 0;
 	
