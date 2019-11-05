@@ -178,9 +178,9 @@ struct Camera
 		m_target.dest = _center;
 
 		m_pos.curr = _center;
-		m_pos.curr.z -= _distance; 
+		m_pos.curr.z += _distance;
 		m_pos.dest = _center;
-		m_pos.dest.z -= _distance; 
+		m_pos.dest.z += _distance;
 
 		m_orbit[0] = 0.0f;
 		m_orbit[1] = 0.0f;
@@ -199,7 +199,7 @@ struct Camera
 	
 	void distance(float _z)
 	{
-		const float cnear = 1.0f;
+		const float cnear = 0.01f;
 		const float cfar  = 100.0f;
 		
 		_z = bx::clamp(_z, cnear, cfar);
@@ -212,7 +212,7 @@ struct Camera
 	
 	void dolly(float _dz)
 	{
-		const float cnear = 1.0f;
+		const float cnear = 0.01f;
 		const float cfar  = 100.0f;
 
 		const bx::Vec3 toTarget     = bx::sub(m_target.dest, m_pos.dest);
@@ -221,7 +221,8 @@ struct Camera
 		const bx::Vec3 toTargetNorm = bx::mul(toTarget, invToTargetLen);
 
 		float delta  = toTargetLen * _dz;
-		float newLen = toTargetLen + delta;
+		float newLen = toTargetLen - delta;
+		
 		if ( (cnear  < newLen || _dz < 0.0f)
 			&&   (newLen < cfar   || _dz > 0.0f) )
 		{
@@ -1242,7 +1243,7 @@ int _main_(int _argc, char** _argv)
 
 			float projMatrix[16];
 			const float aspect = float(view.m_width)/float(view.m_height);
-			bx::mtxProj(projMatrix, 60.0f, aspect, 0.1f, 1000.0f, caps->homogeneousDepth);
+			bx::mtxProj(projMatrix, 60.0f, aspect, 0.01f, 1000.0f, caps->homogeneousDepth);
 
 			bgfx::setViewTransform(SCENE_VIEW_ID, viewMatrix, projMatrix);
 			bgfx::setViewRect(SCENE_VIEW_ID, 0, 0, uint16_t(view.m_width), uint16_t(view.m_height) );
