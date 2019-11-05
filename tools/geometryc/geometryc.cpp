@@ -701,22 +701,14 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 			   , num );
 }
 
-void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
+void processGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 {
-	// Reference(s):
-	// - Gltf 2.0 specification
-	//  https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
-
-	_mesh->m_coordinateSystem.m_handness = bx::Handness::Right;
-	_mesh->m_coordinateSystem.m_forward  = Axis::PositiveZ;
-	_mesh->m_coordinateSystem.m_up       = Axis::PositiveY;
-
 	cgltf_mesh* mesh = _node->mesh;
 	if (NULL != mesh)
 	{
 		float nodeToWorld[16];
 		cgltf_node_transform_world(_node, nodeToWorld);
-		//todo: inverseTranspose for normal
+		//todo: mtxCofactor for normal
 		
 		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
 		{
@@ -820,11 +812,19 @@ void parseGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 	}
 
 	for (cgltf_size childIndex = 0; childIndex < _node->children_count; ++childIndex)
-		parseGltfNode(_node->children[childIndex], _mesh, _group, _hasBc);
+		processGltfNode(_node->children[childIndex], _mesh, _group, _hasBc);
 }
 
 void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::StringView& _path)
 {
+	// Reference(s):
+	// - Gltf 2.0 specification
+	//  https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
+	
+	_mesh->m_coordinateSystem.m_handness = bx::Handness::Right;
+	_mesh->m_coordinateSystem.m_forward  = Axis::PositiveZ;
+	_mesh->m_coordinateSystem.m_up       = Axis::PositiveY;
+
 	Group group;
 	group.m_startTriangle = 0;
 	group.m_numTriangles = 0;
@@ -851,7 +851,7 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::
 				{
 					cgltf_node* node = &data->nodes[nodeIndex];
 					
-					parseGltfNode(node, _mesh, &group, _hasBc);
+					processGltfNode(node, _mesh, &group, _hasBc);
 				}
 			}
 		}
