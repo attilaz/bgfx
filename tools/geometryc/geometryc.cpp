@@ -133,8 +133,8 @@ struct CoordinateSystemMapping
 
 static const CoordinateSystemMapping s_coordinateSystemMappings[] =
 {
-	{ "lh-up+y", { bx::Handness::Left, Axis::PositiveY, Axis::PositiveZ } } ,
-	{ "lh-up+z", { bx::Handness::Left, Axis::PositiveZ, Axis::PositiveY } },
+	{ "lh-up+y", { bx::Handness::Left, Axis::PositiveY, Axis::NegativeZ } } ,
+	{ "lh-up+z", { bx::Handness::Left, Axis::PositiveZ, Axis::NegativeY } },
 	{ "rh-up+y", { bx::Handness::Right, Axis::PositiveY, Axis::PositiveZ } },
 	{ "rh-up+z", { bx::Handness::Right, Axis::PositiveZ, Axis::PositiveY } },
 };
@@ -427,8 +427,8 @@ void mtxCoordinateTransform(float* _result, const CoordinateSystem& _cs)
 		right = bx::mul(right, -1.0f);
 	}
 	bx::mtxIdentity(_result);
-	bx::store(&_result[0], forward);
-	bx::store(&_result[4], right);
+	bx::store(&_result[0], right);
+	bx::store(&_result[4], forward);
 	bx::store(&_result[8], up);
 }
 
@@ -977,7 +977,7 @@ int main(int _argc, const char* _argv[])
 
 	CoordinateSystem coordinateSystem;
 	coordinateSystem.m_handness = bx::Handness::Left;
-	coordinateSystem.m_forward = Axis::PositiveZ;
+	coordinateSystem.m_forward = Axis::NegativeZ;
 	coordinateSystem.m_up = Axis::PositiveY;
 	for (uint32_t ii = 0; ii < BX_COUNTOF(s_coordinateSystemMappings); ++ii)
 	{
@@ -1045,12 +1045,15 @@ int main(int _argc, const char* _argv[])
 		
 		float meshInvTranform[16];
 		bx::mtxTranspose(meshInvTranform, meshTransform);
-		
+
 		float outTransform[16];
 		mtxCoordinateTransform(outTransform, coordinateSystem);
 
 		float transform[16];
+		//bx::mtxMul(transform, outTransform, meshInvTranform);
 		bx::mtxMul(transform, meshInvTranform, outTransform);
+
+		//bx::Vec3 testOutB = bx::mul(bx::Vec3(1.0f,2.0f,3.0f), transform);
 		
 		if ( mtxDeterminant(transform) < 0.0f )
 		{
@@ -1059,9 +1062,10 @@ int main(int _argc, const char* _argv[])
 
 		float identity[16];
 		bx::mtxIdentity(identity);
-		
+
 		if ( 0 != bx::memCmp(identity, transform, sizeof(transform) ) )
 		{
+
 			for (Vec3Array::iterator it = mesh.m_positions.begin(), itEnd = mesh.m_positions.end(); it != itEnd; ++it)
 			{
 				*it = bx::mul(*it, transform);
