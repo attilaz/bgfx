@@ -710,7 +710,6 @@ void processGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 		cgltf_node_transform_world(_node, nodeToWorld);
 		float nodeToWorldNormal[16];
 		bx::mtxCofactor(nodeToWorldNormal, nodeToWorld);
-		//todo: mtxCofactor for normal
 		
 		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
 		{
