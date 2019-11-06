@@ -708,6 +708,8 @@ void processGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 	{
 		float nodeToWorld[16];
 		cgltf_node_transform_world(_node, nodeToWorld);
+		float nodeToWorldNormal[16];
+		bx::mtxCofactor(nodeToWorldNormal, nodeToWorld);
 		//todo: mtxCofactor for normal
 		
 		for (cgltf_size primitiveIndex = 0; primitiveIndex < mesh->primitives_count; ++primitiveIndex)
@@ -747,6 +749,7 @@ void processGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 					for(cgltf_size v=0;v<accessor->count;++v)
 					{
 						cgltf_accessor_read_float(accessor, v, &normal.x, 3);
+						normal = mul(normal, nodeToWorldNormal);
 						_mesh->m_normals.push_back(normal);
 					}
 				}
@@ -849,7 +852,7 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::
 				
 				for (cgltf_size nodeIndex = 0; nodeIndex < scene->nodes_count; ++nodeIndex)
 				{
-					cgltf_node* node = &data->nodes[nodeIndex];
+					cgltf_node* node = scene->nodes[nodeIndex];
 					
 					processGltfNode(node, _mesh, &group, _hasBc);
 				}

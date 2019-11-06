@@ -169,10 +169,10 @@ struct Camera
 {
 	Camera()
 	{
-		init(bx::Vec3(0.0f,0.0f,0.0f), 2.0f);
+		init(bx::Vec3(0.0f,0.0f,0.0f), 2.0f, 0.01f, 100.0f);
 	}
 
-	void init(const bx::Vec3& _center, float _distance)
+	void init(const bx::Vec3& _center, float _distance, float _near, float _far)
 	{
 		m_target.curr = _center;
 		m_target.dest = _center;
@@ -184,6 +184,9 @@ struct Camera
 
 		m_orbit[0] = 0.0f;
 		m_orbit[1] = 0.0f;
+
+		m_near = _near;
+		m_far  = _far;
 	}
 
 	void mtxLookAt(float* _outViewMtx)
@@ -199,10 +202,7 @@ struct Camera
 	
 	void distance(float _z)
 	{
-		const float cnear = 0.01f;
-		const float cfar  = 100.0f;
-		
-		_z = bx::clamp(_z, cnear, cfar);
+		_z = bx::clamp(_z, m_near, m_far);
 		
 		bx::Vec3 toTarget     = bx::sub(m_target.dest, m_pos.dest);
 		bx::Vec3 toTargetNorm = bx::normalize(toTarget);
@@ -212,9 +212,6 @@ struct Camera
 	
 	void dolly(float _dz)
 	{
-		const float cnear = 0.01f;
-		const float cfar  = 100.0f;
-
 		const bx::Vec3 toTarget     = bx::sub(m_target.dest, m_pos.dest);
 		const float toTargetLen     = bx::length(toTarget);
 		const float invToTargetLen  = 1.0f / (toTargetLen + bx::kFloatMin);
@@ -223,8 +220,8 @@ struct Camera
 		float delta  = toTargetLen * _dz;
 		float newLen = toTargetLen - delta;
 		
-		if ( (cnear  < newLen || _dz < 0.0f)
-			&&   (newLen < cfar   || _dz > 0.0f) )
+		if ( (m_near  < newLen || _dz < 0.0f)
+			&&   (newLen < m_far   || _dz > 0.0f) )
 		{
 			m_pos.dest = bx::mad(toTargetNorm, delta, m_pos.dest);
 		}
@@ -275,6 +272,7 @@ struct Camera
 	Interp3f m_target;
 	Interp3f m_pos;
 	float m_orbit[2];
+	float m_near, m_far;
 };
 
 struct Mouse
@@ -1216,7 +1214,7 @@ int _main_(int _argc, char** _argv)
 					view.m_meshCenter = getCenter(boundingBox);
 					view.m_meshRadius = bx::length(getExtents(boundingBox));
 
-					view.m_camera.init( view.m_meshCenter, view.m_meshRadius * 2.0f);
+					view.m_camera.init( view.m_meshCenter, view.m_meshRadius * 2.0f, 0.01f, view.m_meshRadius * 10.0f);
 				}
 				else
 				{
