@@ -19,6 +19,8 @@ namespace stl = tinystl;
 #define CGLTF_IMPLEMENTATION
 #include <cgltf/cgltf.h>
 
+#include <openfbx/src/ofbx.h>
+
 #define BGFX_GEOMETRYC_VERSION_MAJOR 1
 #define BGFX_GEOMETRYC_VERSION_MINOR 0
 
@@ -461,8 +463,7 @@ float mtxDeterminant(const float* _a)
 	return det;
 }
 
-
-void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
+int32_t parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 {
 	// Reference(s):
 	// - Wavefront .obj file
@@ -699,8 +700,9 @@ void parseObj(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 	
 	bx::printf("obj parser # %d\n"
 			   , num );
+	
+	return bx::kExitSuccess;
 }
-
 
 void gltfReadFloat(const float* _accessorData, cgltf_size _accessorNumComponents, cgltf_size _index, cgltf_float* _out, cgltf_size _outElementSize)
 {
@@ -843,7 +845,7 @@ void processGltfNode(cgltf_node* _node, Mesh* _mesh, Group* _group, bool _hasBc)
 		processGltfNode(_node->children[childIndex], _mesh, _group, _hasBc);
 }
 
-void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::StringView& _path)
+int32_t parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::StringView& _path)
 {
 	// Reference(s):
 	// - Gltf 2.0 specification
@@ -861,31 +863,195 @@ void parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const bx::
 	cgltf_data* data = NULL;
 	cgltf_result result = cgltf_parse(&options, _data, _size, &data);
 	
+	if (result != cgltf_result_success)
+	{
+		bx::printf("Error: gltf parsing failed");
+		return bx::kExitFailure;
+	}
+
+	char* path = (char*)malloc(_path.getLength()+1);
+	bx::memCopy(path, _path.getPtr(), _path.getLength());
+	path[_path.getLength()] = 0;
+	result = cgltf_load_buffers(&options, data, path);
+	free(path);
+	
 	if (result == cgltf_result_success)
 	{
-		char* path = (char*)malloc(_path.getLength()+1);
-		bx::memCopy(path, _path.getPtr(), _path.getLength());
-		path[_path.getLength()] = 0;
-		result = cgltf_load_buffers(&options, data, path);
-		free(path);
-		
-		if (result == cgltf_result_success)
+		for (cgltf_size sceneIndex = 0; sceneIndex < data->scenes_count; ++sceneIndex)
 		{
-			for (cgltf_size sceneIndex = 0; sceneIndex < data->scenes_count; ++sceneIndex)
+			cgltf_scene* scene = &data->scenes[sceneIndex];
+			
+			for (cgltf_size nodeIndex = 0; nodeIndex < scene->nodes_count; ++nodeIndex)
 			{
-				cgltf_scene* scene = &data->scenes[sceneIndex];
+				cgltf_node* node = scene->nodes[nodeIndex];
 				
-				for (cgltf_size nodeIndex = 0; nodeIndex < scene->nodes_count; ++nodeIndex)
-				{
-					cgltf_node* node = scene->nodes[nodeIndex];
-					
-					processGltfNode(node, _mesh, &group, _hasBc);
-				}
+				processGltfNode(node, _mesh, &group, _hasBc);
 			}
 		}
-		
-		cgltf_free(data);
 	}
+
+	cgltf_free(data);
+	
+	return bx::kExitSuccess;
+}
+
+int32_t parseFbx(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
+{
+	ofbx::IScene* fbxScene = ofbx::load((const ofbx::u8*)_data, _size, 0);
+	
+	if ( NULL == fbxScene )
+	{
+		bx::printf("Error: fbx parsing failed");
+		return bx::kExitFailure;
+	}
+
+#if 0
+	int fbxObjectCount = fbxScene->getAllObjectCount();
+	for( int i=0; i<fbxObjectCount; ++i)
+	{
+		const ofbx::Object* obj = fbxScene->getAllObjects()[i];
+		if ( obj->getType() == ofbx::Object::Type::MATERIAL )
+		{
+			const ofbx::Material* fbxMaterial = (const ofbx::Material*)obj;
+			
+			Material mat;
+			mat.m_name = fbxMaterial->name;
+			
+			bool found = false;
+			for(size_t j=0;j<materials.size();++j)
+			if (materials[j].m_name == mat.m_name )
+			{
+				found = true;
+				break;
+			}
+			if (found)
+			continue;
+			
+			mat.m_diffuseColor[0] = fbxMaterial->getDiffuseColor().r;
+			mat.m_diffuseColor[1] = fbxMaterial->getDiffuseColor().g;
+			mat.m_diffuseColor[2] = fbxMaterial->getDiffuseColor().g;
+			mat.m_diffuseColor[3] = 1.0f;
+			
+			materials.push_back(mat);
+		}
+	}
+	
+	int fbxMeshCount = fbxScene->getMeshCount();
+	for( int i=0; i<fbxMeshCount; ++i)
+	{
+		const ofbx::Mesh* fbxMesh = fbxScene->getMesh(i);
+		
+		Node node;
+		node.m_name = fbxMesh->name;
+		node.m_parent = 0; //todo: hierarchy
+		node.m_jointIndex = -1; //todo: skinning
+		
+		ofbx::Matrix fbxGeometricTransform = fbxMesh->getGeometricMatrix();
+		float geometricTransform[16];
+		mtxDoubleToFloat(geometricTransform, &fbxGeometricTransform.m[0]);
+		
+		ofbx::Matrix fbxGlobalTransform = fbxMesh->getGlobalTransform();
+		float globalTransform[16];
+		mtxDoubleToFloat(globalTransform, &fbxGlobalTransform.m[0]);
+		
+		bx::mtxMul(node.m_transform, globalTransform, geometricTransform);
+		
+		nodes.push_back(node);
+		
+		const ofbx::Geometry* fbxGeom = fbxMesh->getGeometry();
+		int fbxVertexCount = fbxGeom->getVertexCount();
+		const ofbx::Vec3* fbxVertices = fbxGeom->getVertices();
+		const ofbx::Vec3* fbxNormals = fbxGeom->getNormals();
+		const ofbx::Vec2* fbxUv0 = fbxGeom->getUVs(0);
+		const int* fbxMaterials = fbxGeom->getMaterials();
+		
+		positions.reserve(positions.size() + fbxVertexCount);
+		normals.reserve(normals.size() + fbxVertexCount);
+		texcoords.reserve(texcoords.size() + fbxVertexCount);
+		
+		int prevVertexCount = positions.size();
+		
+		int materialCount = fbxMesh->getMaterialCount() ? fbxMesh->getMaterialCount() : 1;
+		
+		for(int matID=0; matID < materialCount; ++matID)
+		{
+			for(int vi=0; vi<fbxVertexCount; vi+=3)
+			{
+				if (fbxMaterials && fbxMaterials[vi/3] != matID)
+				continue;
+				
+				Triangle triangle;
+				
+				for(int edge=0;edge<3;++edge)
+				{
+					int k = vi + edge;
+					
+					//todo: deduplicate position/normals/uvs
+					Vector3 p = { (float)fbxVertices[k].x, (float)fbxVertices[k].y, (float)fbxVertices[k].z };
+					positions.push_back(p);
+					
+					Vector3 n = { (float)fbxNormals[k].x, (float)fbxNormals[k].y, (float)fbxNormals[k].z };
+					normals.push_back(n);
+					
+					Vector3 uv0 = { (float)fbxUv0[k].x, (float)fbxUv0[k].y };
+					texcoords.push_back(uv0);
+					
+					Index3 index;
+					index.m_position = k + prevVertexCount;
+					index.m_texcoord = k + prevVertexCount;
+					index.m_normal = k + prevVertexCount;
+					index.m_vertexIndex = -1;
+					if (hasBc)
+					{
+						index.m_vbc = edge < 3 ? edge : (1+(edge+1) )&1;
+					}
+					else
+					{
+						index.m_vbc = 0;
+					}
+					
+					uint64_t hash0 = index.m_position;
+					uint64_t hash1 = uint64_t(index.m_texcoord)<<20;
+					uint64_t hash2 = uint64_t(index.m_normal)<<40;
+					uint64_t hash3 = uint64_t(index.m_vbc)<<60;
+					uint64_t hash = hash0^hash1^hash2^hash3;
+					
+					stl::pair<Index3Map::iterator, bool> result = indexMap.insert(stl::make_pair(hash, index) );
+					if (!result.second)
+					{
+						Index3& oldIndex = result.first->second;
+						BX_UNUSED(oldIndex);
+						BX_CHECK(oldIndex.m_position == index.m_position
+								 && oldIndex.m_texcoord == index.m_texcoord
+								 && oldIndex.m_normal == index.m_normal
+								 , "Hash collision!"
+								 );
+					}
+					
+					triangle.m_index[edge] = hash;
+				}
+				if (ccw)
+				{
+					std::swap(triangle.m_index[1], triangle.m_index[2]);
+				}
+				triangles.push_back(triangle);
+			}
+			
+			group.m_numTriangles = triangles.size() - group.m_startTriangle;
+			group.m_name = fbxMesh->name;
+			if (fbxMaterials)
+			{
+				const ofbx::Material* mat = fbxMesh->getMaterial(matID);
+				if (mat)
+				group.m_material = mat->name;
+			}
+			group.m_node = nodes.size();
+			groups.push_back(group);
+			group.m_startTriangle += group.m_numTriangles;
+		}
+	}
+#endif
+	return bx::kExitSuccess;
 }
 
 
@@ -912,6 +1078,7 @@ void help(const char* _error = NULL)
 		  "Supported input file types:\n"
 		  "    *.obj                  Wavefront\n"
 		  "    *.gltf,*.glb           glTF 2.0\n"
+		  "    *.fbx                  FBX\n"
 
 		  "\n"
 		  "Options:\n"
@@ -1032,13 +1199,18 @@ int main(int _argc, const char* _argv[])
 
 	Mesh mesh;
 	bx::StringView ext = bx::FilePath(filePath).getExt();
+	int32_t parseResult = bx::kExitFailure;
 	if (0 == bx::strCmpI(ext, ".obj"))
 	{
-		parseObj(data, size, &mesh, hasBc);
+		parseResult = parseObj(data, size, &mesh, hasBc);
 	}
 	else if (0 == bx::strCmpI(ext, ".gltf") || 0 == bx::strCmpI(ext, ".glb"))
 	{
-		parseGltf(data, size, &mesh, hasBc, bx::FilePath(filePath).getPath());
+		parseResult = parseGltf(data, size, &mesh, hasBc, bx::FilePath(filePath).getPath());
+	}
+	else if (0 == bx::strCmpI(ext, ".fbx"))
+	{
+		parseResult = parseFbx(data, size, &mesh, hasBc);
 	}
 	else
 	{
@@ -1047,6 +1219,11 @@ int main(int _argc, const char* _argv[])
 	}
 
 	delete [] data;
+	
+	if ( parseResult == bx::kExitFailure)
+	{
+		exit(bx::kExitFailure);
+	}
 
 	int64_t now = bx::getHPCounter();
 	parseElapsed += now;
