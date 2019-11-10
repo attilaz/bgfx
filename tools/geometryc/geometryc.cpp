@@ -895,13 +895,19 @@ int32_t parseGltf(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc, const b
 	return bx::kExitSuccess;
 }
 
+void mtxFromDoubleArray(float* _result, const double* _in)
+{
+	for(uint32_t ii=0; ii<16; ++ii)
+		_result[ii] = _in[16];
+}
+
 int32_t parseFbx(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 {
 	ofbx::IScene* fbxScene = ofbx::load((const ofbx::u8*)_data, _size, 0);
 	
 	if ( NULL == fbxScene )
 	{
-		bx::printf("Error: fbx parsing failed");
+		bx::printf("Error: %s", ofbx::getError());
 		return bx::kExitFailure;
 	}
 
@@ -935,109 +941,104 @@ int32_t parseFbx(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 			materials.push_back(mat);
 		}
 	}
+#endif
+	
+	Group group;
+	group.m_startTriangle = 0;
+	group.m_numTriangles = 0;
 	
 	int fbxMeshCount = fbxScene->getMeshCount();
 	for( int i=0; i<fbxMeshCount; ++i)
 	{
 		const ofbx::Mesh* fbxMesh = fbxScene->getMesh(i);
 		
-		Node node;
-		node.m_name = fbxMesh->name;
-		node.m_parent = 0; //todo: hierarchy
-		node.m_jointIndex = -1; //todo: skinning
-		
 		ofbx::Matrix fbxGeometricTransform = fbxMesh->getGeometricMatrix();
+		
 		float geometricTransform[16];
-		mtxDoubleToFloat(geometricTransform, &fbxGeometricTransform.m[0]);
+		mtxFromDoubleArray(geometricTransform, &fbxGeometricTransform.m[0]);
 		
 		ofbx::Matrix fbxGlobalTransform = fbxMesh->getGlobalTransform();
 		float globalTransform[16];
-		mtxDoubleToFloat(globalTransform, &fbxGlobalTransform.m[0]);
+		mtxFromDoubleArray(globalTransform, &fbxGlobalTransform.m[0]);
 		
-		bx::mtxMul(node.m_transform, globalTransform, geometricTransform);
-		
-		nodes.push_back(node);
-		
+		float meshToWorld[16];
+		bx::mtxMul(meshToWorld, globalTransform, geometricTransform);
+		float meshToWorldNormal[16];
+		bx::mtxCofactor(meshToWorldNormal, meshToWorld);
+
 		const ofbx::Geometry* fbxGeom = fbxMesh->getGeometry();
 		int fbxVertexCount = fbxGeom->getVertexCount();
 		const ofbx::Vec3* fbxVertices = fbxGeom->getVertices();
 		const ofbx::Vec3* fbxNormals = fbxGeom->getNormals();
-		const ofbx::Vec2* fbxUv0 = fbxGeom->getUVs(0);
+		const ofbx::Vec2* fbxUV0 = fbxGeom->getUVs(0);
 		const int* fbxMaterials = fbxGeom->getMaterials();
-		
-		positions.reserve(positions.size() + fbxVertexCount);
-		normals.reserve(normals.size() + fbxVertexCount);
-		texcoords.reserve(texcoords.size() + fbxVertexCount);
-		
-		int prevVertexCount = positions.size();
+
+		_mesh->m_positions.reserve(_mesh->m_positions.size() + fbxVertexCount);
+		if ( NULL != fbxNormals )
+		{
+			_mesh->m_normals.reserve(_mesh->m_normals.size() + fbxVertexCount);
+		}
+		if ( NULL != fbxUV0 )
+		{
+			_mesh->m_texcoords.reserve(_mesh->m_texcoords.size() + fbxVertexCount);
+		}
 		
 		int materialCount = fbxMesh->getMaterialCount() ? fbxMesh->getMaterialCount() : 1;
-		
+
 		for(int matID=0; matID < materialCount; ++matID)
 		{
 			for(int vi=0; vi<fbxVertexCount; vi+=3)
 			{
 				if (fbxMaterials && fbxMaterials[vi/3] != matID)
-				continue;
-				
-				Triangle triangle;
-				
-				for(int edge=0;edge<3;++edge)
+					continue;
+
+				TriIndices triangle;
+
+				for(int v=0;v<3;++v)
 				{
-					int k = vi + edge;
-					
-					//todo: deduplicate position/normals/uvs
-					Vector3 p = { (float)fbxVertices[k].x, (float)fbxVertices[k].y, (float)fbxVertices[k].z };
-					positions.push_back(p);
-					
-					Vector3 n = { (float)fbxNormals[k].x, (float)fbxNormals[k].y, (float)fbxNormals[k].z };
-					normals.push_back(n);
-					
-					Vector3 uv0 = { (float)fbxUv0[k].x, (float)fbxUv0[k].y };
-					texcoords.push_back(uv0);
-					
+					int k = vi + v;
+
 					Index3 index;
-					index.m_position = k + prevVertexCount;
-					index.m_texcoord = k + prevVertexCount;
-					index.m_normal = k + prevVertexCount;
-					index.m_vertexIndex = -1;
-					if (hasBc)
+					
+					bx::Vec3 p = { (float)fbxVertices[k].x, (float)fbxVertices[k].y, (float)fbxVertices[k].z };
+					index.m_position = (int32_t)_mesh->m_positions.size();
+					_mesh->m_positions.push_back(p);
+
+					if ( NULL != fbxNormals )
 					{
-						index.m_vbc = edge < 3 ? edge : (1+(edge+1) )&1;
+						bx::Vec3 n = { (float)fbxNormals[k].x, (float)fbxNormals[k].y, (float)fbxNormals[k].z };
+						index.m_normal = (int32_t)_mesh->m_normals.size();
+						_mesh->m_normals.push_back(n);
+					}
+					else
+					{
+						index.m_normal = -1;
+					}
+					
+					if ( NULL != fbxUV0 )
+					{
+						bx::Vec3 uv0 = { (float)fbxUV0[k].x, (float)fbxUV0[k].y, 0.0f };
+						index.m_texcoord = (int32_t)_mesh->m_texcoords.size();
+						_mesh->m_texcoords.push_back(uv0);
+					}
+					else
+					{
+						index.m_texcoord = -1;
+					}
+
+					if (_hasBc)
+					{
+						index.m_vbc = v < 3 ? v : (1+(v+1) )&1;
 					}
 					else
 					{
 						index.m_vbc = 0;
 					}
-					
-					uint64_t hash0 = index.m_position;
-					uint64_t hash1 = uint64_t(index.m_texcoord)<<20;
-					uint64_t hash2 = uint64_t(index.m_normal)<<40;
-					uint64_t hash3 = uint64_t(index.m_vbc)<<60;
-					uint64_t hash = hash0^hash1^hash2^hash3;
-					
-					stl::pair<Index3Map::iterator, bool> result = indexMap.insert(stl::make_pair(hash, index) );
-					if (!result.second)
-					{
-						Index3& oldIndex = result.first->second;
-						BX_UNUSED(oldIndex);
-						BX_CHECK(oldIndex.m_position == index.m_position
-								 && oldIndex.m_texcoord == index.m_texcoord
-								 && oldIndex.m_normal == index.m_normal
-								 , "Hash collision!"
-								 );
-					}
-					
-					triangle.m_index[edge] = hash;
 				}
-				if (ccw)
-				{
-					std::swap(triangle.m_index[1], triangle.m_index[2]);
-				}
-				triangles.push_back(triangle);
+				_mesh->m_triangles.push_back(triangle);
 			}
 			
-			group.m_numTriangles = triangles.size() - group.m_startTriangle;
+			group.m_numTriangles = (int32_t)_mesh->m_triangles.size() - group.m_startTriangle;
 			group.m_name = fbxMesh->name;
 			if (fbxMaterials)
 			{
@@ -1045,12 +1046,11 @@ int32_t parseFbx(char* _data, uint32_t _size, Mesh* _mesh, bool _hasBc)
 				if (mat)
 				group.m_material = mat->name;
 			}
-			group.m_node = nodes.size();
-			groups.push_back(group);
+			_mesh->m_groups.push_back(group);
 			group.m_startTriangle += group.m_numTriangles;
 		}
 	}
-#endif
+	
 	return bx::kExitSuccess;
 }
 
