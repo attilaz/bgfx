@@ -379,7 +379,7 @@ Implementation of Clustered Shading and Physically Based Rendering with the bgfx
 
 Off The Road Unleashed is a sandbox driving game for the Nintendo Switch.  
 If you see a vehicle you bet you can hop into it! Pilot big rigs, helicopters, boats, airplanes or even trains. 
-Immerse yourself in realistic sandbox environments all filled with challenging tasks and collectables. Sand dunes, frozen plains, mountains to climb and conquer.
+Realistic environments all filled with challenging tasks and collectables. Sand dunes, frozen plains, mountains to climb and conquer.
 
 https://www.nintendo.com/games/detail/off-the-road-unleashed-switch/
 
