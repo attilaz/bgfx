@@ -383,7 +383,7 @@ Immerse yourself in realistic sandbox environments all filled with challenging t
 https://www.nintendo.com/games/detail/off-the-road-unleashed-switch/
 
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=cwDR0Wj3LO4" 
-target="_blank"><img src="https://i.ytimg.com/vi/cwDR0Wj3LO4/maxresdefault.jpg" 
+target="_blank"><img src="https://i.ytimg.com/vi/cwDR0Wj3LO4/hq720.jpg" 
 alt="Off The Road Unleashed"
 width="1280" height="720" border="0" /></a>
 
